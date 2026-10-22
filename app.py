@@ -31,7 +31,8 @@ def search_videos(query, limit=20):
         info = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
     results = []
     for entry in info.get("entries") or []:
-        if not entry or not entry.get("id"):
+        # Skip channels and playlists; only 11-character ids are playable videos.
+        if not entry or len(entry.get("id") or "") != 11:
             continue
         results.append({
             "id": entry["id"],
