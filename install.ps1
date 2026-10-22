@@ -1,8 +1,9 @@
-# Tunes installer for Windows. Run in PowerShell:
+# Bonesy's Song Player installer for Windows. Run in PowerShell:
 #   irm https://raw.githubusercontent.com/bradleyevans1989-svg/yt-player/main/install.ps1 | iex
 $ErrorActionPreference = 'Stop'
 $Repo = 'bradleyevans1989-svg/yt-player'
-$Dir = Join-Path $env:LOCALAPPDATA 'Tunes'
+$Dir = Join-Path $env:LOCALAPPDATA 'BonesySongPlayer'
+$Name = "Bonesy's Song Player"
 
 function Refresh-Path {
     $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
@@ -18,7 +19,7 @@ function Find-Python {
     return $null
 }
 
-Write-Host 'Installing Tunes...' -ForegroundColor Cyan
+Write-Host "Installing $Name..." -ForegroundColor Cyan
 
 $python = Find-Python
 if (-not $python) {
@@ -45,8 +46,8 @@ Write-Host 'Installing dependencies...'
 Write-Host 'Creating shortcuts...'
 $shell = New-Object -ComObject WScript.Shell
 $targets = @(
-    (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Tunes.lnk'),
-    (Join-Path ([Environment]::GetFolderPath('Programs')) 'Tunes.lnk')
+    (Join-Path ([Environment]::GetFolderPath('Desktop')) "$Name.lnk"),
+    (Join-Path ([Environment]::GetFolderPath('Programs')) "$Name.lnk")
 )
 foreach ($path in $targets) {
     $lnk = $shell.CreateShortcut($path)
@@ -58,5 +59,5 @@ foreach ($path in $targets) {
     $lnk.Save()
 }
 
-Write-Host 'Done! Opening Tunes. Next time, just double-click the Tunes icon on your desktop.' -ForegroundColor Green
+Write-Host "Done! Opening $Name. Next time, just double-click its icon on your desktop." -ForegroundColor Green
 Start-Process $pythonw -ArgumentList ('"' + (Join-Path $Dir 'launcher.pyw') + '"') -WorkingDirectory $Dir

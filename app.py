@@ -20,6 +20,16 @@ STREAM_TTL = 60 * 60  # stream URLs from YouTube expire after a few hours
 _stream_cache = {}
 _cache_lock = threading.Lock()
 
+CHART_URL = "https://rss.applemarketingtools.com/api/v2/au/music/most-played/50/songs.json"
+CHART_TTL = 6 * 60 * 60
+# Shown if the chart feed can't be reached.
+FALLBACK_ARTISTS = [
+    "The Rions", "Spacey Jane", "Ocean Alley", "Lime Cordiale", "Royel Otis", "G Flip",
+    "Ruel", "Vance Joy", "Tame Impala", "Amyl and the Sniffers", "The Kid LAROI",
+    "Troye Sivan", "Dope Lemon", "Budjerah", "Hockey Dad", "King Gizzard & the Lizard Wizard",
+]
+_chart_cache = {"data": None, "expires": 0}
+
 # Updated by the page's heartbeat; the launcher exits once the window is closed.
 last_seen = time.time()
 
@@ -86,13 +96,66 @@ def api_ping():
     return "", 204
 
 
+def top_in_australia():
+    """Top songs in Australia (Apple Music's most-played chart) and their artists."""
+    if _chart_cache["data"] and _chart_cache["expires"] > time.time():
+        return _chart_cache["data"]
+    try:
+        feed = requests.get(CHART_URL, timeout=10).json()["feed"]["results"]
+        songs = [{
+            "title": item["name"],
+            "artist": item["artistName"],
+            "artwork": item.get("artworkUrl100", "").replace("100x100", "300x300"),
+        } for item in feed]
+        artists = list(dict.fromkeys(song["artist"] for song in songs))
+        data = {"songs": songs, "artists": artists}
+        _chart_cache.update(data=data, expires=time.time() + CHART_TTL)
+        return data
+    except Exception:
+        return {"songs": [], "artists": FALLBACK_ARTISTS}
+
+
+def similar_songs(video_id, limit=10):
+    """Songs from YouTube's auto-generated mix (radio) for a video."""
+    opts = {**YDL_OPTS, "extract_flat": "in_playlist", "playlistend": limit + 1}
+    url = f"https://www.youtube.com/watch?v={video_id}&list=RD{video_id}"
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    results = []
+    for entry in info.get("entries") or []:
+        if not entry or len(entry.get("id") or "") != 11 or entry["id"] == video_id:
+            continue
+        results.append({
+            "id": entry["id"],
+            "title": entry.get("title") or "Untitled",
+            "channel": entry.get("channel") or entry.get("uploader") or "",
+            "duration": entry.get("duration"),
+            "thumbnail": _thumb(entry["id"]),
+        })
+    return results[:limit]
+
+
+@app.get("/api/similar/<video_id>")
+def api_similar(video_id):
+    try:
+        return jsonify(similar_songs(video_id))
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@app.get("/api/charts")
+def api_charts():
+    return jsonify(top_in_australia())
+
+
 @app.get("/api/search")
 def api_search():
     query = (request.args.get("q") or "").strip()
+    limit = max(1, min(int(request.args.get("n") or 20), 30))
     if not query:
         return jsonify([])
     try:
-        return jsonify(search_videos(query))
+        return jsonify(search_videos(query, limit))
     except Exception as exc:  # yt-dlp raises many error types
         return jsonify({"error": str(exc)}), 502
 

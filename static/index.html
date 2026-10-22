@@ -3,14 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tunes</title>
+<title>Bonesy's Song Player</title>
 <link rel="icon" href="/favicon.ico">
 <style>
   :root { --bg:#0f1115; --panel:#181b22; --line:#262a33; --text:#e8eaf0; --muted:#8b91a0; --accent:#ff4d5e; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, sans-serif; padding-bottom:120px; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, sans-serif; padding-bottom:170px; }
   header { padding:16px; position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); z-index:2; }
-  form { display:flex; gap:8px; max-width:900px; margin:0 auto; }
+  form { display:flex; gap:8px; max-width:900px; margin:0 auto; align-items:center; flex-wrap:wrap; }
+  .brand { font-weight:800; font-size:18px; color:var(--text); text-decoration:none; white-space:nowrap; margin-right:8px; }
+  .brand span { color:var(--accent); }
+  form input { min-width:180px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { border-radius:999px; padding:8px 14px; background:var(--panel); border:1px solid var(--line); }
+  .chip:hover { border-color:var(--accent); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:14px; }
+  .card { cursor:pointer; position:relative; }
+  .card img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; display:block; background:var(--panel); }
+  .card .rank { position:absolute; top:6px; left:6px; background:rgba(0,0,0,.7); border-radius:6px; padding:1px 7px; font-size:12px; font-weight:700; }
+  .card .add { position:absolute; top:6px; right:6px; padding:3px 9px; background:rgba(0,0,0,.7); }
+  .card .t { margin-top:6px; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card .a { color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  [hidden] { display:none !important; }
   input { flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text); font-size:16px; }
   button { cursor:pointer; border:0; border-radius:10px; background:var(--panel); color:var(--text); padding:10px 14px; font-size:15px; }
   button.primary { background:var(--accent); color:#fff; }
@@ -38,6 +52,7 @@
 <body>
 <header>
   <form id="search">
+    <a href="#" class="brand" id="home">🎵 Bonesy's <span>Song Player</span></a>
     <input id="q" type="search" placeholder="Search songs or artists" autocomplete="off" autofocus>
     <button class="primary" type="submit">Search</button>
   </form>
@@ -47,10 +62,24 @@
     <h2>Up next</h2>
     <ul id="queue"><li class="empty">Queue is empty. Search for something and hit Play or +.</li></ul>
   </section>
-  <section>
-    <h2>Results</h2>
+  <section id="resultsView" hidden>
+    <h2 id="resultsTitle">Results</h2>
     <ul id="results"></ul>
   </section>
+  <div id="homeView" style="display:grid; gap:24px;">
+    <section id="mineSection" hidden>
+      <h2>Your artists</h2>
+      <div class="chips" id="mine"></div>
+    </section>
+    <section>
+      <h2>Top artists in Australia</h2>
+      <div class="chips" id="topArtists"><span class="empty">Loading…</span></div>
+    </section>
+    <section id="topSongsSection">
+      <h2>Top songs in Australia</h2>
+      <div class="grid" id="topSongs"></div>
+    </section>
+  </div>
 </main>
 <footer>
   <div class="bar">
@@ -62,6 +91,7 @@
       <button id="prev" title="Previous">⏮</button>
       <button id="next" title="Next">⏭</button>
       <button id="shuffle" title="Shuffle queue">🔀</button>
+      <button id="autoplay" title="When the queue runs out, keep playing similar songs">Autoplay: on</button>
     </div>
   </div>
 </footer>
@@ -117,10 +147,11 @@ function play(i) {
   if (i < 0 || i >= queue.length) return;
   index = i;
   const t = queue[i];
+  remember(t);
   audio.src = `/api/stream/${t.id}`;
   audio.play().catch(() => {});
   $("nowTitle").textContent = t.title;
-  document.title = `${t.title} · Tunes`;
+  document.title = `${t.title} · Bonesy's Song Player`;
   if ("mediaSession" in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title, artist: t.channel, artwork: [{ src: t.thumbnail, sizes: "320x180" }],
@@ -138,13 +169,41 @@ function enqueue(t, playNow) {
   if (playNow) { queue.splice(index + 1, 0, t); play(index + 1); }
   else { queue.push(t); save(); renderQueue(); if (index < 0) play(queue.length - 1); }
 }
-const next = () => play(index + 1);
+let autoplay = load("autoplay", true);
+const showAutoplay = () => { $("autoplay").textContent = `Autoplay: ${autoplay ? "on" : "off"}`; $("autoplay").classList.toggle("primary", autoplay); };
+
+// When the queue runs out, add songs from YouTube's mix for the current one.
+async function addSimilar() {
+  const current = queue[index];
+  if (!current) return false;
+  try {
+    const res = await fetch(`/api/similar/${current.id}`);
+    const songs = await res.json();
+    if (!res.ok) return false;
+    const seen = new Set(queue.map((t) => t.id));
+    const fresh = songs.filter((t) => !seen.has(t.id)).slice(0, 5);
+    queue.push(...fresh);
+    save(); renderQueue();
+    return fresh.length > 0;
+  } catch { return false; }
+}
+async function next() {
+  if (index + 1 >= queue.length && !(autoplay && await addSimilar())) return;
+  play(index + 1);
+}
 const prev = () => (audio.currentTime > 3 ? (audio.currentTime = 0) : play(index - 1));
 
-$("search").onsubmit = async (e) => {
-  e.preventDefault();
-  const q = $("q").value.trim();
-  if (!q) return;
+function showHome() {
+  $("resultsView").hidden = true; $("homeView").hidden = false; $("q").value = "";
+}
+$("home").onclick = (e) => { e.preventDefault(); showHome(); };
+$("search").onsubmit = (e) => { e.preventDefault(); search($("q").value.trim()); };
+
+async function search(q) {
+  if (!q) return showHome();
+  $("q").value = q;
+  $("homeView").hidden = true; $("resultsView").hidden = false;
+  $("resultsTitle").textContent = `Results for "${q}"`;
   const ul = $("results");
   ul.innerHTML = `<li class="empty">Searching…</li>`;
   try {
@@ -163,8 +222,60 @@ $("search").onsubmit = async (e) => {
     ul.innerHTML = `<li class="empty"></li>`;
     ul.firstChild.textContent = `Search failed: ${err.message}`;
   }
-};
+}
+
+// Find a chart song on YouTube and play it (or queue it).
+async function playChartSong(song, playNow) {
+  try {
+    const res = await fetch(`/api/search?n=1&q=${encodeURIComponent(`${song.artist} ${song.title}`)}`);
+    const [hit] = await res.json();
+    if (hit) enqueue(hit, playNow);
+  } catch {}
+}
+
+function chip(name) {
+  const b = document.createElement("button");
+  b.className = "chip"; b.textContent = name; b.onclick = () => search(name);
+  return b;
+}
+
+// Artists you play most, remembered in this browser.
+function remember(t) {
+  if (!t.channel) return;
+  const counts = load("artists", {});
+  counts[t.channel] = (counts[t.channel] || 0) + 1;
+  try { localStorage.setItem("artists", JSON.stringify(counts)); } catch {}
+  renderMine();
+}
+function renderMine() {
+  const counts = load("artists", {});
+  const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 12);
+  $("mineSection").hidden = !names.length;
+  $("mine").replaceChildren(...names.map(chip));
+}
+
+async function loadCharts() {
+  let data = { songs: [], artists: [] };
+  try { data = await (await fetch("/api/charts")).json(); } catch {}
+  $("topArtists").replaceChildren(...data.artists.slice(0, 20).map(chip));
+  $("topSongsSection").hidden = !data.songs.length;
+  $("topSongs").replaceChildren(...data.songs.map((song, i) => {
+    const card = document.createElement("div");
+    card.className = "card"; card.title = "Click to play";
+    card.innerHTML = `<img loading="lazy" alt=""><span class="rank">${i + 1}</span><button class="add" title="Add to queue">+</button><div class="t"></div><div class="a"></div>`;
+    card.querySelector("img").src = song.artwork;
+    card.querySelector(".t").textContent = song.title;
+    card.querySelector(".a").textContent = song.artist;
+    card.onclick = (ev) => playChartSong(song, !ev.target.closest("button"));
+    return card;
+  }));
+}
 $("next").onclick = next;
+$("autoplay").onclick = () => {
+  autoplay = !autoplay; showAutoplay();
+  try { localStorage.setItem("autoplay", JSON.stringify(autoplay)); } catch {}
+};
+showAutoplay();
 $("prev").onclick = prev;
 $("shuffle").onclick = () => {
   const current = queue[index];
@@ -183,6 +294,8 @@ if ("mediaSession" in navigator) {
 const ping = () => fetch("/api/ping", { method: "POST" }).catch(() => {});
 ping(); setInterval(ping, 30000);
 renderQueue();
+renderMine();
+loadCharts();
 if (queue[index]) { $("nowTitle").textContent = queue[index].title; audio.src = `/api/stream/${queue[index].id}`; }
 </script>
 </body>
