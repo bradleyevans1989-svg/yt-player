@@ -8,6 +8,10 @@ Lock-screen and media-key controls work on phones and laptops.
 
 ## Run it
 
+**Windows, easiest:** install Python from python.org, then double-click `run.bat`. It installs what's needed and opens the player in your browser.
+
+**Any OS:**
+
 Requires Python 3.10+.
 
 ```bash
