@@ -4,15 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bonesy's Song Player</title>
-<link rel="icon" href="/favicon.ico">
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#0f1115">
 <style>
   :root { --bg:#0f1115; --panel:#181b22; --line:#262a33; --text:#e8eaf0; --muted:#8b91a0; --accent:#ff4d5e; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, sans-serif; padding-bottom:170px; }
   header { padding:16px; position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); z-index:2; }
   form { display:flex; gap:8px; max-width:900px; margin:0 auto; align-items:center; flex-wrap:wrap; }
-  .brand { font-weight:800; font-size:18px; color:var(--text); text-decoration:none; white-space:nowrap; margin-right:8px; }
-  .brand span { color:var(--accent); }
+  .brand { display:flex; align-items:center; gap:10px; color:var(--text); text-decoration:none; margin-right:8px; }
+  .brand img { width:40px; height:40px; border-radius:10px; box-shadow:0 4px 14px rgba(255,77,94,.35); transition:transform .2s; }
+  .brand:hover img { transform:rotate(-8deg) scale(1.05); }
+  .brand .name { display:flex; flex-direction:column; line-height:1; }
+  .brand .name b { font-size:21px; font-weight:800; letter-spacing:-.02em; }
+  .brand .name small { font-size:10.5px; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:var(--accent); margin-top:4px; }
   form input { min-width:180px; }
   .chips { display:flex; flex-wrap:wrap; gap:8px; }
   .chip { border-radius:999px; padding:8px 14px; background:var(--panel); border:1px solid var(--line); }
@@ -52,7 +60,7 @@
 <body>
 <header>
   <form id="search">
-    <a href="#" class="brand" id="home">🎵 Bonesy's <span>Song Player</span></a>
+    <a href="#" class="brand" id="home" title="Home"><img src="/static/logo.svg" alt=""><span class="name"><b>Bonesy's</b><small>Song Player</small></span></a>
     <input id="q" type="search" placeholder="Search songs or artists" autocomplete="off" autofocus>
     <button class="primary" type="submit">Search</button>
   </form>
