@@ -8,7 +8,18 @@ Lock-screen and media-key controls work on phones and laptops.
 
 ## Run it
 
-**Windows, easiest:** install Python from python.org, then double-click `run.bat`. It installs what's needed and opens the player in your browser.
+**Windows, easiest:** open PowerShell and paste:
+
+```powershell
+irm https://raw.githubusercontent.com/bradleyevans1989-svg/yt-player/main/install.ps1 | iex
+```
+
+It installs Python if needed, puts Tunes in `%LOCALAPPDATA%\Tunes`, and adds a **Tunes** icon to your desktop
+and Start menu. The icon opens the player in its own window with no console. Each launch pulls the latest
+version from GitHub and updates yt-dlp once a day. The server stops a few minutes after you close the window.
+If something goes wrong, check `%LOCALAPPDATA%\Tunes\tunes.log`.
+
+You can also double-click `run.bat` in a downloaded copy.
 
 **Any OS:**
 

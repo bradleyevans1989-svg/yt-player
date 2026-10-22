@@ -20,6 +20,9 @@ STREAM_TTL = 60 * 60  # stream URLs from YouTube expire after a few hours
 _stream_cache = {}
 _cache_lock = threading.Lock()
 
+# Updated by the page's heartbeat; the launcher exits once the window is closed.
+last_seen = time.time()
+
 
 def _thumb(video_id):
     return f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
@@ -69,6 +72,18 @@ def resolve_audio(video_id):
 @app.get("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, "icon.ico")
+
+
+@app.post("/api/ping")
+def api_ping():
+    global last_seen
+    last_seen = time.time()
+    return "", 204
 
 
 @app.get("/api/search")

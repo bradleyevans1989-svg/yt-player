@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tunes</title>
+<link rel="icon" href="/favicon.ico">
 <style>
   :root { --bg:#0f1115; --panel:#181b22; --line:#262a33; --text:#e8eaf0; --muted:#8b91a0; --accent:#ff4d5e; }
   * { box-sizing:border-box; }
@@ -18,6 +19,7 @@
   ul { list-style:none; margin:0; padding:0; }
   li { display:flex; align-items:center; gap:12px; padding:8px; border-radius:10px; }
   li:hover { background:var(--panel); }
+  #results li { cursor:pointer; }
   li.playing { background:var(--panel); outline:1px solid var(--accent); }
   li img { width:80px; height:45px; object-fit:cover; border-radius:6px; flex:none; }
   .meta { flex:1; min-width:0; }
@@ -151,7 +153,12 @@ $("search").onsubmit = async (e) => {
     if (!res.ok) throw new Error(data.error || res.statusText);
     ul.replaceChildren();
     if (!data.length) ul.innerHTML = `<li class="empty">No results.</li>`;
-    for (const t of data) ul.append(row(t, [["▶", "Play now", () => enqueue(t, true)], ["+", "Add to queue", () => enqueue(t, false)]]));
+    for (const t of data) {
+      const li = row(t, [["▶", "Play now", () => enqueue(t, true)], ["+", "Add to queue", () => enqueue(t, false)]]);
+      li.title = "Click to play";
+      li.onclick = (ev) => { if (!ev.target.closest("button")) enqueue(t, true); };
+      ul.append(li);
+    }
   } catch (err) {
     ul.innerHTML = `<li class="empty"></li>`;
     ul.firstChild.textContent = `Search failed: ${err.message}`;
@@ -172,6 +179,9 @@ if ("mediaSession" in navigator) {
   navigator.mediaSession.setActionHandler("nexttrack", next);
   navigator.mediaSession.setActionHandler("previoustrack", prev);
 }
+// Heartbeat so the desktop launcher knows the window is still open.
+const ping = () => fetch("/api/ping", { method: "POST" }).catch(() => {});
+ping(); setInterval(ping, 30000);
 renderQueue();
 if (queue[index]) { $("nowTitle").textContent = queue[index].title; audio.src = `/api/stream/${queue[index].id}`; }
 </script>
