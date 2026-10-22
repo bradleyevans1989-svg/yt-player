@@ -1,114 +1,164 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
-      <stop offset="0" stop-color="#1f3a3a"/>
-      <stop offset="1" stop-color="#0b1414"/>
+    <radialGradient id="bg" cx="0.5" cy="0.4" r="0.8">
+      <stop offset="0" stop-color="#243b3c"/>
+      <stop offset="1" stop-color="#070d0d"/>
     </radialGradient>
-    <linearGradient id="bone" x1="0.2" y1="0" x2="0.8" y2="1">
-      <stop offset="0" stop-color="#fbf0d4"/>
-      <stop offset="0.6" stop-color="#ecd29c"/>
-      <stop offset="1" stop-color="#c99a5b"/>
-    </linearGradient>
-    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#a8b24e"/>
-      <stop offset="0.45" stop-color="#6f7a2c"/>
-      <stop offset="0.8" stop-color="#8a2a22"/>
-      <stop offset="1" stop-color="#b3222a"/>
+    <radialGradient id="bone" cx="0.42" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#fff6df"/>
+      <stop offset="0.5" stop-color="#eccf98"/>
+      <stop offset="0.85" stop-color="#b8824a"/>
+      <stop offset="1" stop-color="#7a4b25"/>
+    </radialGradient>
+    <radialGradient id="jaw" cx="0.5" cy="0.2" r="0.9">
+      <stop offset="0" stop-color="#f3dcab"/>
+      <stop offset="0.7" stop-color="#c58e52"/>
+      <stop offset="1" stop-color="#7a4b25"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="0.3">
+      <stop offset="0" stop-color="#b9c457"/>
+      <stop offset="0.4" stop-color="#6c7a2a"/>
+      <stop offset="0.75" stop-color="#7d2d20"/>
+      <stop offset="1" stop-color="#c0222b"/>
     </linearGradient>
     <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#8e979c"/>
-      <stop offset="0.45" stop-color="#f2f5f6"/>
-      <stop offset="1" stop-color="#7d868b"/>
+      <stop offset="0" stop-color="#6b7479"/>
+      <stop offset="0.4" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#cfd6d9"/>
+      <stop offset="1" stop-color="#5c656a"/>
     </linearGradient>
-    <radialGradient id="socket" cx="0.5" cy="0.6" r="0.6">
-      <stop offset="0" stop-color="#c3242c"/>
-      <stop offset="1" stop-color="#3d070b"/>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a66f12"/>
+      <stop offset="0.5" stop-color="#ffd64a"/>
+      <stop offset="1" stop-color="#a66f12"/>
+    </linearGradient>
+    <radialGradient id="ruby" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#ff6b6b"/>
+      <stop offset="0.5" stop-color="#b5121f"/>
+      <stop offset="1" stop-color="#4a0609"/>
     </radialGradient>
-    <radialGradient id="mouth" cx="0.5" cy="0.7" r="0.6">
-      <stop offset="0" stop-color="#b01e27"/>
-      <stop offset="1" stop-color="#2c0507"/>
+    <radialGradient id="socket" cx="0.5" cy="0.65" r="0.65">
+      <stop offset="0" stop-color="#d42a33"/>
+      <stop offset="0.6" stop-color="#5a0a10"/>
+      <stop offset="1" stop-color="#1a0203"/>
     </radialGradient>
-    <clipPath id="mouthClip"><ellipse cx="256" cy="368" rx="54" ry="52"/></clipPath>
-    <!-- skull silhouette, reused for halo, outline and fill -->
-    <g id="skull">
-      <ellipse cx="256" cy="200" rx="122" ry="112"/>
-      <path d="M148 214 Q146 296 192 318 L320 318 Q366 296 364 214 Z"/>
-      <path d="M190 322 Q186 450 256 452 Q326 450 322 322 Z"/>
+    <radialGradient id="throat" cx="0.5" cy="0.75" r="0.7">
+      <stop offset="0" stop-color="#c0222b"/>
+      <stop offset="0.7" stop-color="#4a0609"/>
+      <stop offset="1" stop-color="#1a0203"/>
+    </radialGradient>
+    <clipPath id="mouthClip"><path d="M198 332 Q256 318 314 332 Q326 400 256 426 Q186 400 198 332 Z"/></clipPath>
+    <g id="cranium">
+      <path d="M256 78 C330 78 384 134 384 212 C384 262 364 292 340 316 L172 316 C148 292 128 262 128 212 C128 134 182 78 256 78 Z"/>
     </g>
-    <path id="leafShape" d="M0 0 Q40 -46 110 -10 Q52 34 0 0 Z"/>
+    <g id="jawShape">
+      <path d="M182 318 L330 318 L326 372 C320 440 300 464 256 466 C212 464 192 440 186 372 Z"/>
+    </g>
+    <path id="leafShape" d="M0 0 C30 -52 100 -58 136 -18 C92 24 36 24 0 0 Z"/>
   </defs>
 
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
 
-  <!-- leaves -->
-  <g stroke="#1a1214" stroke-width="7" stroke-linejoin="round" fill="url(#leaf)">
-    <use href="#leafShape" transform="translate(160 400) rotate(155) scale(1.35)"/>
-    <use href="#leafShape" transform="translate(150 320) rotate(195) scale(1.3)"/>
-    <use href="#leafShape" transform="translate(352 160) rotate(-38) scale(1.3)"/>
-    <use href="#leafShape" transform="translate(366 230) rotate(8) scale(1.3)"/>
+  <!-- leaves behind -->
+  <g stroke="#140c0a" stroke-width="7" stroke-linejoin="round" fill="url(#leaf)">
+    <use href="#leafShape" transform="translate(166 418) rotate(160) scale(1.2)"/>
+    <use href="#leafShape" transform="translate(140 344) rotate(200) scale(1.1)"/>
+    <use href="#leafShape" transform="translate(122 272) rotate(225) scale(0.95)"/>
+    <use href="#leafShape" transform="translate(362 136) rotate(-42) scale(1.15)"/>
+    <use href="#leafShape" transform="translate(386 206) rotate(-8) scale(1.1)"/>
+    <use href="#leafShape" transform="translate(372 290) rotate(20) scale(1.0)"/>
+  </g>
+  <!-- dagger blade behind skull -->
+  <g transform="translate(44 -6) rotate(34 256 256)">
+    <path d="M250 150 L262 150 L260 540 L256 556 L252 540 Z" fill="url(#steel)" stroke="#140c0a" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M256 170 L256 520" stroke="#140c0a" stroke-width="2" opacity="0.5"/>
   </g>
 
-  <!-- dagger blade (behind skull, tip comes out under the jaw) -->
-  <g transform="translate(-4 -34) rotate(22 256 256)" stroke="#1a1214" stroke-width="8" stroke-linejoin="round">
-    <path d="M238 120 L274 120 L272 520 L256 560 L240 520 Z" fill="url(#steel)"/>
+  <!-- skull: sticker halo, black outline, fill -->
+  <g stroke-linejoin="round">
+    <use href="#cranium" fill="#f5efe4" stroke="#f5efe4" stroke-width="34"/>
+    <use href="#jawShape" fill="#f5efe4" stroke="#f5efe4" stroke-width="34"/>
+    <use href="#cranium" fill="#140c0a" stroke="#140c0a" stroke-width="18"/>
+    <use href="#jawShape" fill="#140c0a" stroke="#140c0a" stroke-width="18"/>
+    <use href="#cranium" fill="url(#bone)"/>
+    <use href="#jawShape" fill="url(#jaw)"/>
   </g>
 
-  <!-- skull: white sticker halo, black outline, bone fill -->
-  <use href="#skull" fill="#f4efe6" stroke="#f4efe6" stroke-width="40" stroke-linejoin="round"/>
-  <use href="#skull" fill="#1a1214" stroke="#1a1214" stroke-width="20" stroke-linejoin="round"/>
-  <use href="#skull" fill="url(#bone)"/>
-
-  <!-- dagger handle, stabbed into the skull -->
-  <g transform="translate(-4 -34) rotate(22 256 256)" stroke="#1a1214" stroke-width="8" stroke-linejoin="round">
-    <rect x="236" y="46" width="40" height="78" rx="10" fill="url(#steel)"/>
-    <g stroke="#1a1214" stroke-width="4" fill="#e9b52f">
-      <rect x="236" y="62" width="40" height="8"/><rect x="236" y="82" width="40" height="8"/><rect x="236" y="102" width="40" height="8"/>
-    </g>
-    <path d="M256 6 Q284 10 282 40 Q280 54 256 54 Q232 54 230 40 Q228 10 256 6 Z" fill="#b5212a"/>
-    <path d="M200 124 Q256 108 312 124 L306 140 Q256 128 206 140 Z" fill="#e9b52f"/>
+  <!-- shading: temples and cheekbones -->
+  <g fill="#7a4b25" opacity="0.35">
+    <path d="M140 200 C150 250 170 280 196 300 C170 290 142 262 140 200 Z"/>
+    <path d="M372 200 C362 250 342 280 316 300 C342 290 370 262 372 200 Z"/>
+    <path d="M186 372 C200 430 230 452 256 456 C224 454 198 436 186 372 Z"/>
+  </g>
+  <!-- cheekbone outlines -->
+  <g stroke="#140c0a" stroke-width="6" fill="none" stroke-linecap="round">
+    <path d="M150 262 C160 292 176 304 194 310"/>
+    <path d="M362 262 C352 292 336 304 318 310"/>
   </g>
 
-  <!-- jaw line -->
-  <path d="M192 320 Q256 330 320 320" stroke="#1a1214" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- cracks -->
+  <g stroke="#140c0a" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M300 96 L286 128 L306 144 L290 176 L302 190"/>
+    <path d="M150 232 L172 244 L166 266 L182 272"/>
+    <path d="M344 300 L356 288"/>
+  </g>
+
+  <!-- teal filigree -->
+  <g stroke="#0f8c8a" stroke-width="5.5" fill="none" stroke-linecap="round">
+    <path d="M256 112 L256 160 M238 128 L274 128"/>
+    <path d="M232 156 C214 160 206 146 214 136 C222 128 234 136 228 146"/>
+    <path d="M280 156 C298 160 306 146 298 136 C290 128 278 136 284 146"/>
+    <path d="M190 190 C170 180 160 198 170 210"/>
+    <path d="M322 190 C342 180 352 198 342 210"/>
+    <path d="M214 352 C196 356 196 380 212 380"/>
+    <path d="M298 352 C316 356 316 380 300 380"/>
+    <path d="M236 440 C244 452 268 452 276 440"/>
+  </g>
+  <g fill="#0f8c8a">
+    <circle cx="166" cy="180" r="5"/><circle cx="182" cy="156" r="5"/><circle cx="206" cy="140" r="5"/>
+    <circle cx="346" cy="180" r="5"/><circle cx="330" cy="156" r="5"/><circle cx="306" cy="140" r="5"/>
+    <circle cx="256" cy="176" r="5"/>
+  </g>
+
+  <!-- eye sockets with petal rings -->
+  <g stroke="#0f8c8a" stroke-width="4" fill="none" opacity="0.9">
+    <path d="M160 206 C168 184 190 180 214 192 C236 204 240 236 232 258 C214 274 184 272 164 256 C152 240 152 222 160 206 Z"/>
+    <path d="M352 206 C344 184 322 180 298 192 C276 204 272 236 280 258 C298 274 328 272 348 256 C360 240 360 222 352 206 Z"/>
+  </g>
+  <g stroke="#140c0a" stroke-width="8" stroke-linejoin="round" fill="url(#socket)">
+    <path d="M168 210 C180 186 210 190 230 212 C238 240 226 264 200 266 C170 262 160 236 168 210 Z"/>
+    <path d="M344 210 C332 186 302 190 282 212 C274 240 286 264 312 266 C342 262 352 236 344 210 Z"/>
+  </g>
+  <!-- glints -->
+  <circle cx="200" cy="232" r="9" fill="#ff8a72"/>
+  <circle cx="312" cy="232" r="9" fill="#ff8a72"/>
+  <!-- nose -->
+  <path d="M256 268 L238 306 C248 300 264 300 274 306 Z" fill="#1a0203" stroke="#140c0a" stroke-width="7" stroke-linejoin="round"/>
 
   <!-- screaming mouth -->
-  <ellipse cx="256" cy="368" rx="54" ry="52" fill="url(#mouth)" stroke="#1a1214" stroke-width="8"/>
-  <g clip-path="url(#mouthClip)" stroke="#1a1214" stroke-width="4" fill="#fbf3dc">
-    <rect x="203" y="306" width="18" height="32" rx="4"/><rect x="221" y="306" width="18" height="34" rx="4"/>
-    <rect x="239" y="306" width="17" height="36" rx="4"/><rect x="256" y="306" width="17" height="36" rx="4"/>
-    <rect x="273" y="306" width="18" height="34" rx="4"/><rect x="291" y="306" width="18" height="32" rx="4"/>
-    <rect x="207" y="400" width="20" height="30" rx="4"/><rect x="227" y="396" width="19" height="32" rx="4"/>
-    <rect x="246" y="394" width="20" height="34" rx="4"/><rect x="266" y="396" width="19" height="32" rx="4"/>
-    <rect x="285" y="400" width="20" height="30" rx="4"/>
+  <path d="M198 332 Q256 318 314 332 Q326 400 256 426 Q186 400 198 332 Z" fill="url(#throat)" stroke="#140c0a" stroke-width="8" stroke-linejoin="round"/>
+  <g clip-path="url(#mouthClip)" stroke="#140c0a" stroke-width="4" fill="#fbf1d6">
+    <path d="M200 322 L218 322 L216 352 Q209 358 202 352 Z"/><path d="M219 320 L237 320 L235 356 Q228 362 221 356 Z"/>
+    <path d="M238 318 L256 318 L255 360 Q247 366 240 360 Z"/><path d="M257 318 L275 318 L274 360 Q266 366 258 360 Z"/>
+    <path d="M276 320 L294 320 L292 356 Q285 362 278 356 Z"/><path d="M295 322 L313 322 L311 352 Q304 358 297 352 Z"/>
+    <path d="M214 434 L232 434 L230 404 Q223 398 216 404 Z"/><path d="M233 436 L251 436 L250 400 Q242 394 235 400 Z"/>
+    <path d="M252 436 L270 436 L269 400 Q261 394 254 400 Z"/><path d="M271 436 L289 436 L288 404 Q281 398 274 404 Z"/>
   </g>
 
-  <!-- teal sugar-skull filigree -->
-  <g stroke="#14898a" stroke-width="6" fill="none" stroke-linecap="round">
-    <path d="M256 104 L256 150 M240 120 L272 120"/>
-    <path d="M232 160 Q206 150 212 128 Q218 112 232 120"/>
-    <path d="M280 160 Q306 150 300 128 Q294 112 280 120"/>
-    <path d="M176 292 Q164 270 180 262 Q194 258 194 274"/>
-    <path d="M336 292 Q348 270 332 262 Q318 258 318 274"/>
-  </g>
-  <g fill="#14898a">
-    <circle cx="160" cy="214" r="5"/><circle cx="176" cy="180" r="5"/><circle cx="206" cy="168" r="5"/>
-    <circle cx="352" cy="214" r="5"/><circle cx="336" cy="180" r="5"/><circle cx="306" cy="168" r="5"/>
+  <!-- dagger handle, stabbed into the top of the skull -->
+  <g transform="translate(44 -6) rotate(34 256 256)" stroke="#140c0a" stroke-width="7" stroke-linejoin="round">
+    <path d="M196 150 C226 138 286 138 316 150 L310 166 C286 158 226 158 202 166 Z" fill="url(#gold)"/>
+    <rect x="236" y="54" width="40" height="92" rx="8" fill="#2b1810"/>
+    <g stroke-width="4" fill="url(#gold)">
+      <path d="M236 70 L276 62 L276 72 L236 80 Z"/><path d="M236 92 L276 84 L276 94 L236 102 Z"/><path d="M236 114 L276 106 L276 116 L236 124 Z"/>
+    </g>
+    <path d="M256 6 C286 8 290 40 282 54 L230 54 C222 40 226 8 256 6 Z" fill="url(#ruby)"/>
+    <path d="M246 20 C250 14 258 12 264 16" stroke="#ffd6d6" stroke-width="5" fill="none" stroke-linecap="round"/>
   </g>
 
-  <!-- angry eye sockets -->
-  <g stroke="#1a1214" stroke-width="8" stroke-linejoin="round" fill="url(#socket)">
-    <path d="M168 200 Q182 176 238 208 Q242 254 204 260 Q166 256 168 200 Z"/>
-    <path d="M344 200 Q330 176 274 208 Q270 254 308 260 Q346 256 344 200 Z"/>
-    <path d="M256 270 L240 302 Q256 294 272 302 Z" fill="#3d070b"/>
-  </g>
-
-  <!-- cracks and highlights -->
-  <g stroke="#1a1214" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M318 98 L304 126 L320 140 L308 166"/>
-    <path d="M150 250 L170 262 L166 280"/>
-  </g>
-  <g stroke="#ffffff" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.9">
-    <path d="M170 150 Q186 114 222 98"/>
-    <path d="M160 176 L162 168"/>
+  <!-- bone highlights -->
+  <g stroke="#ffffff" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.85">
+    <path d="M166 150 C180 118 210 100 240 94"/>
+    <path d="M206 342 C214 338 224 336 232 338"/>
   </g>
 </svg>
