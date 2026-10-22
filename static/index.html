@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tunes</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --line:#262a33; --text:#e8eaf0; --muted:#8b91a0; --accent:#ff4d5e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, sans-serif; padding-bottom:120px; }
+  header { padding:16px; position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); z-index:2; }
+  form { display:flex; gap:8px; max-width:900px; margin:0 auto; }
+  input { flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text); font-size:16px; }
+  button { cursor:pointer; border:0; border-radius:10px; background:var(--panel); color:var(--text); padding:10px 14px; font-size:15px; }
+  button.primary { background:var(--accent); color:#fff; }
+  main { max-width:900px; margin:0 auto; padding:16px; display:grid; gap:24px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 8px; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { display:flex; align-items:center; gap:12px; padding:8px; border-radius:10px; }
+  li:hover { background:var(--panel); }
+  li.playing { background:var(--panel); outline:1px solid var(--accent); }
+  li img { width:80px; height:45px; object-fit:cover; border-radius:6px; flex:none; }
+  .meta { flex:1; min-width:0; }
+  .title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sub { color:var(--muted); font-size:13px; }
+  .actions { display:flex; gap:4px; flex:none; }
+  .actions button { padding:6px 10px; font-size:13px; }
+  .empty { color:var(--muted); padding:8px; }
+  footer { position:fixed; left:0; right:0; bottom:0; background:var(--panel); border-top:1px solid var(--line); padding:12px 16px; }
+  .bar { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .now { flex:1 1 200px; min-width:0; }
+  audio { width:100%; }
+  .controls { display:flex; gap:6px; }
+</style>
+</head>
+<body>
+<header>
+  <form id="search">
+    <input id="q" type="search" placeholder="Search songs or artists" autocomplete="off" autofocus>
+    <button class="primary" type="submit">Search</button>
+  </form>
+</header>
+<main>
+  <section>
+    <h2>Up next</h2>
+    <ul id="queue"><li class="empty">Queue is empty. Search for something and hit Play or +.</li></ul>
+  </section>
+  <section>
+    <h2>Results</h2>
+    <ul id="results"></ul>
+  </section>
+</main>
+<footer>
+  <div class="bar">
+    <div class="now">
+      <div class="title" id="nowTitle">Nothing playing</div>
+      <audio id="audio" controls preload="none"></audio>
+    </div>
+    <div class="controls">
+      <button id="prev" title="Previous">⏮</button>
+      <button id="next" title="Next">⏭</button>
+      <button id="shuffle" title="Shuffle queue">🔀</button>
+    </div>
+  </div>
+</footer>
+<script>
+const $ = (id) => document.getElementById(id);
+const audio = $("audio");
+let queue = load("queue", []);
+let index = load("index", -1);
+
+function load(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function save() {
+  try { localStorage.setItem("queue", JSON.stringify(queue)); localStorage.setItem("index", JSON.stringify(index)); } catch {}
+}
+function fmt(sec) {
+  if (!sec) return "";
+  sec = Math.round(sec);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+function row(track, buttons) {
+  const li = document.createElement("li");
+  li.innerHTML = `<img loading="lazy" alt=""><div class="meta"><div class="title"></div><div class="sub"></div></div><div class="actions"></div>`;
+  li.querySelector("img").src = track.thumbnail;
+  li.querySelector(".title").textContent = track.title;
+  li.querySelector(".sub").textContent = [track.channel, fmt(track.duration)].filter(Boolean).join(" · ");
+  for (const [label, title, fn] of buttons) {
+    const b = document.createElement("button");
+    b.textContent = label; b.title = title; b.onclick = fn;
+    li.querySelector(".actions").append(b);
+  }
+  return li;
+}
+
+function renderQueue() {
+  const ul = $("queue");
+  ul.replaceChildren();
+  if (!queue.length) {
+    ul.innerHTML = `<li class="empty">Queue is empty. Search for something and hit Play or +.</li>`;
+    return;
+  }
+  queue.forEach((t, i) => {
+    const li = row(t, [
+      ["▶", "Play", () => play(i)],
+      ["✕", "Remove", () => remove(i)],
+    ]);
+    if (i === index) li.classList.add("playing");
+    ul.append(li);
+  });
+}
+
+function play(i) {
+  if (i < 0 || i >= queue.length) return;
+  index = i;
+  const t = queue[i];
+  audio.src = `/api/stream/${t.id}`;
+  audio.play().catch(() => {});
+  $("nowTitle").textContent = t.title;
+  document.title = `${t.title} · Tunes`;
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: t.title, artist: t.channel, artwork: [{ src: t.thumbnail, sizes: "320x180" }],
+    });
+  }
+  save(); renderQueue();
+}
+function remove(i) {
+  queue.splice(i, 1);
+  if (i < index) index--;
+  else if (i === index) { audio.pause(); index = Math.min(index, queue.length - 1); }
+  save(); renderQueue();
+}
+function enqueue(t, playNow) {
+  if (playNow) { queue.splice(index + 1, 0, t); play(index + 1); }
+  else { queue.push(t); save(); renderQueue(); if (index < 0) play(queue.length - 1); }
+}
+const next = () => play(index + 1);
+const prev = () => (audio.currentTime > 3 ? (audio.currentTime = 0) : play(index - 1));
+
+$("search").onsubmit = async (e) => {
+  e.preventDefault();
+  const q = $("q").value.trim();
+  if (!q) return;
+  const ul = $("results");
+  ul.innerHTML = `<li class="empty">Searching…</li>`;
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    ul.replaceChildren();
+    if (!data.length) ul.innerHTML = `<li class="empty">No results.</li>`;
+    for (const t of data) ul.append(row(t, [["▶", "Play now", () => enqueue(t, true)], ["+", "Add to queue", () => enqueue(t, false)]]));
+  } catch (err) {
+    ul.innerHTML = `<li class="empty"></li>`;
+    ul.firstChild.textContent = `Search failed: ${err.message}`;
+  }
+};
+$("next").onclick = next;
+$("prev").onclick = prev;
+$("shuffle").onclick = () => {
+  const current = queue[index];
+  const rest = queue.filter((_, i) => i !== index).sort(() => Math.random() - 0.5);
+  queue = current ? [current, ...rest] : rest;
+  index = current ? 0 : -1;
+  save(); renderQueue();
+};
+audio.onended = next;
+audio.onerror = () => { if (audio.src) setTimeout(next, 1500); };
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("nexttrack", next);
+  navigator.mediaSession.setActionHandler("previoustrack", prev);
+}
+renderQueue();
+if (queue[index]) { $("nowTitle").textContent = queue[index].title; audio.src = `/api/stream/${queue[index].id}`; }
+</script>
+</body>
+</html>
