@@ -1,0 +1,651 @@
+<title>Bonesy's Song Player</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650&family=Figtree:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one quiet sheet. Cover on the left, track details and controls on the right, the queue underneath. */
+  :root {
+    --bg: #fbfafa;
+    --surface: #f2efef;
+    --line: #e5e0e1;
+    --text: #1d1a1b;
+    --muted: #7a7173;
+    --accent: #e63d50;
+    --on-accent: #ffffff;
+    --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131112; --surface: #1d1a1b; --line: #2c2829; --text: #f2eeef; --muted: #9c9294;
+      --accent: #ff5a6c; --on-accent: #1a0c0e; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131112; --surface: #1d1a1b; --line: #2c2829; --text: #f2eeef; --muted: #9c9294;
+    --accent: #ff5a6c; --on-accent: #1a0c0e; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 var(--font-body);
+    padding-block: 56px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .page { max-width: 1040px; margin: 0 auto; display: grid; gap: 64px; }
+
+  .player { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 64px; align-items: center; }
+  .art {
+    width: 100%; max-width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+    border-radius: 6px; background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 24px 48px -24px rgba(0,0,0,.28);
+  }
+  .info { display: grid; gap: 32px; min-width: 0; }
+  .eyebrow { margin: 0 0 14px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums; }
+  h1 {
+    margin: 0; font: 650 clamp(32px, 4.2vw, 48px)/1.05 var(--font-display);
+    letter-spacing: -.02em; text-wrap: balance; overflow-wrap: anywhere;
+  }
+  .artist { margin: 12px 0 0; font-size: 20px; font-weight: 500; overflow-wrap: anywhere; }
+  .album { margin: 2px 0 0; font-size: 16px; color: var(--muted); overflow-wrap: anywhere; }
+
+  .seek { display: grid; gap: 8px; }
+  #seek {
+    --p: 0%; -webkit-appearance: none; appearance: none; width: 100%; height: 20px; margin: 0;
+    background: transparent; cursor: pointer;
+  }
+  #seek::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--text) var(--p), var(--line) var(--p)); }
+  #seek::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--text) var(--p), var(--line) var(--p)); }
+  #seek::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px; border-radius: 50%; background: var(--text); border: 0; transform: scale(0); transition: transform .15s; }
+  #seek::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 0; transform: scale(0); transition: transform .15s; }
+  #seek:hover::-webkit-slider-thumb, #seek:focus-visible::-webkit-slider-thumb { transform: scale(1); }
+  #seek:hover::-moz-range-thumb, #seek:focus-visible::-moz-range-thumb { transform: scale(1); }
+  #seek:disabled { cursor: default; }
+  .times { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+  button:disabled { cursor: default; opacity: .35; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .controls { display: flex; align-items: center; gap: 20px; }
+  .icon-btn { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; }
+  .icon-btn:not(:disabled):hover { background: var(--surface); }
+  .play { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); transition: transform .12s; }
+  .play:not(:disabled):hover { transform: scale(1.05); }
+  .play:not(:disabled):active { transform: scale(.97); }
+  svg { display: block; fill: currentColor; }
+  .status { margin: 0; min-height: 1.5em; font-size: 14px; color: var(--muted); }
+
+  .queue { display: grid; gap: 12px; }
+  .queue-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .add { font-weight: 600; color: var(--accent); padding: 4px 0; }
+  .add:hover { text-decoration: underline; text-underline-offset: 3px; }
+  ol { list-style: none; margin: 0; padding: 0; }
+  .row { display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) auto 32px; align-items: center; gap: 16px; padding: 8px; border-radius: 6px; cursor: pointer; }
+  .row:hover { background: var(--surface); }
+  .row .n { font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .row img { width: 40px; height: 40px; border-radius: 3px; object-fit: cover; background: var(--surface); }
+  .row .t { min-width: 0; }
+  .row .t div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .t .sub { font-size: 14px; color: var(--muted); }
+  .row .d { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row .x { width: 32px; height: 32px; border-radius: 50%; color: var(--muted); opacity: 0; display: grid; place-items: center; }
+  .row:hover .x, .row .x:focus-visible { opacity: 1; }
+  .row .x:hover { color: var(--text); background: var(--line); }
+  .row.current .n, .row.current .t div:first-child { color: var(--accent); font-weight: 600; }
+  .hint { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+  kbd { font: inherit; font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; }
+
+  .drop { position: fixed; inset: 12px; border: 2px dashed var(--accent); border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 88%, transparent); font: 650 24px var(--font-display); color: var(--accent); pointer-events: none; z-index: 5; }
+
+  @media (max-width: 760px) {
+    body { padding-block: 24px 32px; }
+    .page { gap: 40px; }
+    .player { grid-template-columns: 1fr; gap: 28px; }
+    .art { max-width: 420px; }
+    .row { grid-template-columns: 40px minmax(0, 1fr) 32px; }
+    .row .n, .row .d { display: none; }
+    .row .x { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+  <main class="player">
+    <img class="art" id="art" alt="">
+    <section class="info">
+      <div>
+        <p class="eyebrow" id="position">Loading samples</p>
+        <h1 id="title">Bonesy's Song Player</h1>
+        <p class="artist" id="artist">&nbsp;</p>
+        <p class="album" id="album">&nbsp;</p>
+      </div>
+      <div class="seek">
+        <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled>
+        <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+      </div>
+      <div class="controls">
+        <button class="icon-btn" id="prev" title="Previous (Shift + ←)" aria-label="Previous" disabled>
+          <svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg>
+        </button>
+        <button class="play" id="play" title="Play (Space)" aria-label="Play" disabled>
+          <svg width="26" height="26" viewBox="0 0 24 24" id="playIcon"><path d="M7 4.5v15L20 12z"/></svg>
+        </button>
+        <button class="icon-btn" id="next" title="Next (Shift + →)" aria-label="Next" disabled>
+          <svg width="24" height="24" viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l10.5-7z"/></svg>
+        </button>
+      </div>
+      <p class="status" id="status" role="status"></p>
+    </section>
+  </main>
+
+  <section class="queue">
+    <div class="queue-head">
+      <h2>Up next</h2>
+      <button class="add" id="add">Add music</button>
+    </div>
+    <ol id="list"></ol>
+    <p class="hint">Drop audio files or a whole album folder anywhere on the page. <kbd>Space</kbd> play or pause, <kbd>←</kbd> <kbd>→</kbd> skip 5 seconds, <kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd> previous or next.</p>
+  </section>
+</div>
+<input type="file" id="files" accept="audio/*,image/*,.mp3,.m4a,.flac,.ogg,.opus,.wav,.aac" multiple hidden>
+<div class="drop" id="drop" hidden>Drop to add to the queue</div>
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const audio = $("audio");
+const APP = "Bonesy's Song Player";
+const PLAY = '<path d="M7 4.5v15L20 12z"/>';
+const PAUSE = '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>';
+
+let queue = [];   // { title, artist, album, art, src, duration, sample }
+let index = -1;
+let dragging = false;
+
+// ---------- formatting ----------
+function fmt(sec) {
+  if (!isFinite(sec) || sec <= 0) return "0:00";
+  sec = Math.round(sec);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+function hash(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); }
+function status(msg) { $("status").textContent = msg || ""; }
+
+// ---------- rendering ----------
+function renderNow() {
+  const t = queue[index];
+  $("prev").disabled = $("next").disabled = $("play").disabled = $("seek").disabled = !t;
+  if (!t) return;
+  $("art").src = t.art;
+  $("art").alt = `Cover of ${t.album || t.title}`;
+  $("title").textContent = t.title;
+  $("artist").textContent = t.artist || "Unknown artist";
+  $("album").textContent = t.album || " ";
+  $("position").textContent = `${t.sample ? "Sample · " : ""}Track ${index + 1} of ${queue.length}`;
+  document.title = `${t.title} · ${APP}`;
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: t.title, artist: t.artist || "", album: t.album || "", artwork: [{ src: t.art, sizes: "600x600" }],
+    });
+  }
+}
+function renderList() {
+  const ol = $("list");
+  ol.replaceChildren(...queue.map((t, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === index ? " current" : "");
+    li.title = "Click to play";
+    li.innerHTML = `<span class="n"></span><img alt=""><div class="t"><div></div><div class="sub"></div></div><span class="d"></span><button class="x" aria-label="Remove from queue" title="Remove"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5.6 4.2 12 10.6l6.4-6.4 1.4 1.4-6.4 6.4 6.4 6.4-1.4 1.4-6.4-6.4-6.4 6.4-1.4-1.4 6.4-6.4-6.4-6.4z"/></svg></button>`;
+    li.querySelector(".n").textContent = i + 1;
+    li.querySelector("img").src = t.art;
+    li.querySelector(".t div").textContent = t.title;
+    li.querySelector(".sub").textContent = [t.artist, t.album].filter(Boolean).join(" · ");
+    li.querySelector(".d").textContent = t.duration ? fmt(t.duration) : "";
+    li.querySelector(".x").onclick = (e) => { e.stopPropagation(); remove(i); };
+    li.onclick = () => play(i);
+    return li;
+  }));
+}
+function renderTime() {
+  const d = audio.duration || queue[index]?.duration || 0;
+  if (!dragging) {
+    const p = d ? audio.currentTime / d : 0;
+    $("seek").value = Math.round(p * 1000);
+    $("seek").style.setProperty("--p", `${p * 100}%`);
+    $("cur").textContent = fmt(audio.currentTime);
+  }
+  $("dur").textContent = fmt(d);
+}
+function renderPlaying() {
+  const playing = !audio.paused;
+  $("playIcon").innerHTML = playing ? PAUSE : PLAY;
+  $("play").setAttribute("aria-label", playing ? "Pause" : "Play");
+  $("play").title = playing ? "Pause (Space)" : "Play (Space)";
+}
+
+// ---------- playback (same rules as the original player) ----------
+function select(i) {
+  index = i;
+  audio.src = queue[i].src;
+  status("");
+  renderNow(); renderList(); renderTime();
+}
+function play(i) {
+  if (i < 0 || i >= queue.length) return;
+  select(i);
+  audio.play().catch(() => {});
+}
+function toggle() {
+  if (!queue[index]) return;
+  audio.paused ? audio.play().catch(() => {}) : audio.pause();
+}
+// The original stops at the end of the queue (autoplay fetched YouTube mixes, which an artifact can't reach).
+function next() { if (index + 1 < queue.length) play(index + 1); }
+// Restart the song if it's more than 3 seconds in, otherwise go back one.
+function prev() { audio.currentTime > 3 || index === 0 ? (audio.currentTime = 0) : play(index - 1); }
+function remove(i) {
+  queue.splice(i, 1);
+  if (i < index) index--;
+  else if (i === index) {
+    audio.pause(); audio.removeAttribute("src"); audio.load();
+    index = Math.min(index, queue.length - 1);
+    if (index >= 0) select(index);
+  }
+  renderNow(); renderList(); renderTime();
+  if (!queue.length) {
+    $("title").textContent = "Queue is empty";
+    $("artist").textContent = "Add music to start listening.";
+    $("album").textContent = $("position").textContent = "";
+    $("art").src = placeholderArt("");
+    document.title = APP;
+  }
+}
+
+audio.onplay = audio.onpause = renderPlaying;
+audio.onended = next;
+audio.ontimeupdate = renderTime;
+audio.onloadedmetadata = () => {
+  const t = queue[index];
+  if (t && !t.duration) { t.duration = audio.duration; renderList(); }
+  renderTime();
+};
+audio.onerror = () => {
+  const t = queue[index];
+  if (!audio.getAttribute("src") || !t) return;
+  status(`Couldn't play “${t.title}”. Your browser may not support this format, so skipping it.`);
+  setTimeout(next, 1500);
+};
+$("play").onclick = toggle;
+$("next").onclick = next;
+$("prev").onclick = prev;
+
+const seek = $("seek");
+seek.addEventListener("pointerdown", () => { dragging = true; });
+seek.addEventListener("input", () => {
+  const d = audio.duration || 0;
+  seek.style.setProperty("--p", `${seek.value / 10}%`);
+  $("cur").textContent = fmt(d * seek.value / 1000);
+  if (!dragging) audio.currentTime = d * seek.value / 1000; // keyboard on the slider
+});
+seek.addEventListener("change", () => {
+  const d = audio.duration || 0;
+  if (d) audio.currentTime = d * seek.value / 1000;
+  dragging = false;
+});
+
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("play", toggle);
+  navigator.mediaSession.setActionHandler("pause", toggle);
+  navigator.mediaSession.setActionHandler("nexttrack", next);
+  navigator.mediaSession.setActionHandler("previoustrack", prev);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.code === "Space") { e.preventDefault(); if (!e.repeat) toggle(); return; }
+  if (e.target === seek && !e.shiftKey) return; // the slider handles its own arrows
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    if (!queue[index]) return;
+    e.preventDefault();
+    const fwd = e.key === "ArrowRight";
+    if (e.shiftKey) fwd ? next() : prev();
+    else audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + (fwd ? 5 : -5)));
+  }
+});
+// Stop Space from also "clicking" a focused button on key-up.
+document.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); });
+
+// ---------- adding your own music ----------
+const AUDIO_EXT = /\.(mp3|m4a|mp4|aac|flac|ogg|oga|opus|wav|webm)$/i;
+const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
+
+$("add").onclick = () => $("files").click();
+$("files").onchange = (e) => { addFiles([...e.target.files]); e.target.value = ""; };
+
+let dragDepth = 0;
+addEventListener("dragenter", (e) => { if (e.dataTransfer?.types.includes("Files")) { dragDepth++; $("drop").hidden = false; } });
+addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("drop").hidden = true; } });
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", async (e) => {
+  e.preventDefault();
+  dragDepth = 0; $("drop").hidden = true;
+  const entries = [...e.dataTransfer.items].map((it) => it.webkitGetAsEntry?.()).filter(Boolean);
+  const files = entries.length ? (await Promise.all(entries.map(walk))).flat() : [...e.dataTransfer.files];
+  addFiles(files);
+});
+// Read files out of a dropped folder (and its subfolders).
+async function walk(entry) {
+  if (entry.isFile) return new Promise((res) => entry.file((f) => res([f]), () => res([])));
+  const reader = entry.createReader();
+  const all = [];
+  for (;;) {
+    const batch = await new Promise((res) => reader.readEntries(res, () => res([])));
+    if (!batch.length) break;
+    all.push(...batch);
+  }
+  return (await Promise.all(all.map(walk))).flat();
+}
+
+async function addFiles(files) {
+  const audioFiles = files.filter((f) => f.type.startsWith("audio/") || AUDIO_EXT.test(f.name));
+  const images = files.filter((f) => f.type.startsWith("image/") || IMAGE_EXT.test(f.name));
+  if (!audioFiles.length) {
+    if (images.length && queue[index]) { // an image on its own becomes the current album's cover
+      const url = URL.createObjectURL(images[0]);
+      const album = queue[index].album;
+      queue.forEach((t, i) => { if (i === index || (album && t.album === album)) t.art = url; });
+      renderNow(); renderList();
+    } else status("No audio files found in what you added.");
+    return;
+  }
+  status(`Reading ${audioFiles.length} file${audioFiles.length > 1 ? "s" : ""}…`);
+  // A cover image dropped alongside the songs (cover.jpg, folder.jpg…) is used when a file has no embedded art.
+  const cover = images.find((f) => /cover|folder|front|album/i.test(f.name)) || images[0];
+  const coverUrl = cover ? URL.createObjectURL(cover) : null;
+
+  const tracks = await Promise.all(audioFiles.map(async (file) => {
+    let tags = {};
+    try { tags = await readTags(file); } catch {}
+    const fromName = file.name.replace(/\.[^.]+$/, "").replace(/^\d+[\s.\-_]+/, "");
+    const [nameArtist, nameTitle] = fromName.includes(" - ") ? fromName.split(/ - (.+)/) : ["", fromName];
+    const album = tags.album || "";
+    return {
+      title: tags.title || nameTitle,
+      artist: tags.artist || nameArtist,
+      album,
+      art: tags.picture ? URL.createObjectURL(tags.picture) : coverUrl || placeholderArt(album || tags.artist || nameTitle),
+      src: URL.createObjectURL(file),
+      track: parseInt(tags.track) || 0,
+      name: file.name,
+      duration: 0,
+    };
+  }));
+  // Read each song's length up front so the queue can show it.
+  for (const t of tracks) {
+    const probe = new Audio();
+    probe.preload = "metadata";
+    probe.onloadedmetadata = () => { if (!t.duration) { t.duration = probe.duration; renderList(); } probe.removeAttribute("src"); };
+    probe.src = t.src;
+  }
+  tracks.sort((a, b) => a.album.localeCompare(b.album) || a.track - b.track || a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  // Your first files replace the built-in samples; later ones join the end of the queue.
+  const replacingSamples = queue.length && queue.every((t) => t.sample);
+  if (replacingSamples || !queue.length) {
+    audio.pause();
+    queue = tracks; index = -1;
+    play(0);
+  } else {
+    queue.push(...tracks);
+    renderNow(); renderList();
+  }
+  status(`Added ${tracks.length} song${tracks.length > 1 ? "s" : ""}.`);
+  setTimeout(() => { if ($("status").textContent.startsWith("Added")) status(""); }, 3000);
+}
+
+// ---------- reading embedded tags: ID3 (MP3), MP4/M4A and FLAC ----------
+async function bytes(file, start, end) { return new Uint8Array(await file.slice(start, end).arrayBuffer()); }
+function decode(buf, enc) {
+  const label = ["latin1", "utf-16", "utf-16be", "utf-8"][enc] || "utf-8";
+  return new TextDecoder(label).decode(buf).replace(/\0+$/, "").replace(/^﻿/, "").trim();
+}
+async function readTags(file) {
+  const head = await bytes(file, 0, 12);
+  const sig = String.fromCharCode(...head.slice(0, 4));
+  if (sig.startsWith("ID3")) return readID3(file, head);
+  if (sig === "fLaC") return readFLAC(file);
+  if (String.fromCharCode(...head.slice(4, 8)) === "ftyp") return readMP4(file);
+  return {};
+}
+
+async function readID3(file, head) {
+  const ver = head[3];
+  const size = (head[6] << 21) | (head[7] << 14) | (head[8] << 7) | head[9];
+  const b = await bytes(file, 10, 10 + size);
+  const dv = new DataView(b.buffer);
+  const out = {};
+  let p = 0;
+  if (head[5] & 0x40) p = ver === 4 ? ((b[0] << 21) | (b[1] << 14) | (b[2] << 7) | b[3]) : dv.getUint32(0) + 4;
+  const idLen = ver === 2 ? 3 : 4, hdrLen = ver === 2 ? 6 : 10;
+  const names = ver === 2
+    ? { TT2: "title", TP1: "artist", TAL: "album", TRK: "track" }
+    : { TIT2: "title", TPE1: "artist", TALB: "album", TRCK: "track" };
+  while (p + hdrLen <= b.length) {
+    const id = String.fromCharCode(...b.slice(p, p + idLen));
+    if (!/^[A-Z0-9]+$/.test(id)) break;
+    const len = ver === 2 ? (b[p + 3] << 16) | (b[p + 4] << 8) | b[p + 5]
+      : ver === 4 ? (b[p + 4] << 21) | (b[p + 5] << 14) | (b[p + 6] << 7) | b[p + 7]
+      : dv.getUint32(p + 4);
+    const f = b.subarray(p + hdrLen, p + hdrLen + len);
+    p += hdrLen + len;
+    if (names[id]) out[names[id]] = decode(f.subarray(1), f[0]);
+    else if ((id === "APIC" || id === "PIC") && !out.picture) {
+      const enc = f[0];
+      let q = 1, mime;
+      if (id === "PIC") { mime = "image/" + String.fromCharCode(...f.subarray(1, 4)).toLowerCase(); q = 4; }
+      else { const e = f.indexOf(0, 1); mime = String.fromCharCode(...f.subarray(1, e)) || "image/jpeg"; q = e + 1; }
+      q++; // picture type
+      if (enc === 1 || enc === 2) { while (q + 1 < f.length && (f[q] || f[q + 1])) q += 2; q += 2; }
+      else { while (q < f.length && f[q]) q++; q++; }
+      if (mime === "image/jpg") mime = "image/jpeg";
+      out.picture = new Blob([f.subarray(q)], { type: mime });
+    }
+  }
+  return out;
+}
+
+async function readFLAC(file) {
+  const out = {};
+  let p = 4;
+  for (let last = false; !last && p < file.size;) {
+    const h = await bytes(file, p, p + 4);
+    last = !!(h[0] & 0x80);
+    const type = h[0] & 0x7f, len = (h[1] << 16) | (h[2] << 8) | h[3];
+    p += 4;
+    if (type === 4 || type === 6) {
+      const b = await bytes(file, p, p + len), dv = new DataView(b.buffer);
+      if (type === 4) {
+        let q = 4 + dv.getUint32(0, true);
+        const count = dv.getUint32(q, true); q += 4;
+        for (let i = 0; i < count && q < b.length; i++) {
+          const l = dv.getUint32(q, true);
+          const s = new TextDecoder().decode(b.subarray(q + 4, q + 4 + l)); q += 4 + l;
+          const eq = s.indexOf("="), key = s.slice(0, eq).toUpperCase(), val = s.slice(eq + 1);
+          const map = { TITLE: "title", ARTIST: "artist", ALBUM: "album", TRACKNUMBER: "track" };
+          if (map[key] && !out[map[key]]) out[map[key]] = val;
+        }
+      } else if (!out.picture) {
+        let q = 4;
+        const ml = dv.getUint32(q); const mime = new TextDecoder().decode(b.subarray(q + 4, q + 4 + ml)); q += 4 + ml;
+        q += 4 + dv.getUint32(q) + 16;
+        const dl = dv.getUint32(q);
+        out.picture = new Blob([b.subarray(q + 4, q + 4 + dl)], { type: mime });
+      }
+    }
+    p += len;
+  }
+  return out;
+}
+
+async function readMP4(file) {
+  // Find the top-level "moov" box (it can sit at the end of the file), then walk to udta > meta > ilst.
+  let p = 0, moov = null;
+  while (p + 8 <= file.size) {
+    const h = await bytes(file, p, p + 16), dv = new DataView(h.buffer);
+    let size = dv.getUint32(0);
+    const type = String.fromCharCode(...h.slice(4, 8));
+    if (size === 1) size = Number(dv.getBigUint64(8));
+    else if (size === 0) size = file.size - p;
+    if (size < 8) break;
+    if (type === "moov") { moov = await bytes(file, p, p + size); break; }
+    p += size;
+  }
+  if (!moov) return {};
+  const dv = new DataView(moov.buffer);
+  const children = (start, end) => {
+    const list = [];
+    for (let q = start; q + 8 <= end;) {
+      const size = dv.getUint32(q);
+      if (size < 8) break;
+      list.push({ type: String.fromCharCode(...moov.subarray(q + 4, q + 8)), start: q, end: Math.min(q + size, end) });
+      q += size;
+    }
+    return list;
+  };
+  const find = (list, type) => list.find((x) => x.type === type);
+  const udta = find(children(8, moov.length), "udta");
+  const meta = udta && find(children(udta.start + 8, udta.end), "meta");
+  const ilst = meta && find(children(meta.start + 12, meta.end), "ilst");
+  if (!ilst) return {};
+  const out = {};
+  const map = { "©nam": "title", "©ART": "artist", "aART": "artist", "©alb": "album" };
+  for (const item of children(ilst.start + 8, ilst.end)) {
+    const data = find(children(item.start + 8, item.end), "data");
+    if (!data) continue;
+    const payload = moov.subarray(data.start + 16, data.end);
+    const kind = dv.getUint32(data.start + 8) & 0xffffff;
+    if (map[item.type] && !out[map[item.type]]) out[map[item.type]] = new TextDecoder().decode(payload);
+    else if (item.type === "trkn" && payload.length >= 4) out.track = String((payload[2] << 8) | payload[3]);
+    else if (item.type === "covr" && !out.picture) out.picture = new Blob([payload], { type: kind === 14 ? "image/png" : "image/jpeg" });
+  }
+  return out;
+}
+
+// ---------- artwork ----------
+const artCache = {};
+function placeholderArt(key) {
+  if (artCache[key]) return artCache[key];
+  const c = document.createElement("canvas"); c.width = c.height = 600;
+  const g = c.getContext("2d"), hue = hash(key || "x") % 360;
+  g.fillStyle = `hsl(${hue} 30% 88%)`; g.fillRect(0, 0, 600, 600);
+  g.fillStyle = `hsl(${hue} 22% 22%)`;
+  g.beginPath(); g.arc(300, 300, 190, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = `hsl(${hue} 18% 32%)`; g.lineWidth = 2;
+  for (let r = 90; r < 185; r += 14) { g.beginPath(); g.arc(300, 300, r, 0, Math.PI * 2); g.stroke(); }
+  g.fillStyle = `hsl(${hue} 70% 62%)`;
+  g.beginPath(); g.arc(300, 300, 62, 0, Math.PI * 2); g.fill();
+  g.fillStyle = `hsl(${hue} 30% 88%)`;
+  g.beginPath(); g.arc(300, 300, 8, 0, Math.PI * 2); g.fill();
+  return (artCache[key] = c.toDataURL("image/png"));
+}
+function sampleArt(draw) {
+  const c = document.createElement("canvas"); c.width = c.height = 600;
+  draw(c.getContext("2d"));
+  return c.toDataURL("image/png");
+}
+
+// ---------- built-in samples, synthesised in the browser so nothing needs downloading ----------
+const SAMPLES = [
+  {
+    title: "Morning Glass", bpm: 96, seconds: 26, root: 60, scale: [0, 2, 4, 7, 9], chords: [0, 9, 5, 7], wave: "triangle", seed: 3,
+    art: (g) => {
+      g.fillStyle = "#dfe8ee"; g.fillRect(0, 0, 600, 600);
+      g.fillStyle = "#f2a65a"; g.beginPath(); g.arc(300, 330, 150, Math.PI, 0); g.fill();
+      g.fillStyle = "#9db7c9"; g.fillRect(0, 330, 600, 270);
+      g.fillStyle = "#dfe8ee"; for (let y = 360; y < 600; y += 34) g.fillRect(120 + (y % 3) * 20, y, 360 - (y - 360) * 0.6, 6);
+    },
+  },
+  {
+    title: "Night Bus", bpm: 84, seconds: 28, root: 57, scale: [0, 3, 5, 7, 10], chords: [0, 8, 3, 10], wave: "sine", seed: 7,
+    art: (g) => {
+      g.fillStyle = "#1c2233"; g.fillRect(0, 0, 600, 600);
+      const lights = ["#f4d35e", "#f4d35e", "#ee6352", "#f4d35e", "#7fb7be"];
+      lights.forEach((col, i) => { g.fillStyle = col; g.globalAlpha = 0.9 - i * 0.12; g.beginPath(); g.roundRect(90, 150 + i * 64, 420 - i * 40, 26, 13); g.fill(); });
+      g.globalAlpha = 1;
+    },
+  },
+  {
+    title: "Paper Kites", bpm: 112, seconds: 24, root: 65, scale: [0, 2, 4, 6, 7, 9, 11], chords: [0, 2, 7, 4], wave: "sawtooth", seed: 11,
+    art: (g) => {
+      g.fillStyle = "#f6e7e4"; g.fillRect(0, 0, 600, 600);
+      const kite = (x, y, s, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 0.7, y); g.lineTo(x, y + s * 1.4); g.lineTo(x - s * 0.7, y); g.closePath(); g.fill(); };
+      kite(250, 230, 120, "#e63d50"); kite(420, 330, 70, "#2f3e46"); kite(170, 430, 50, "#f2a65a");
+    },
+  },
+];
+
+function rng(seed) { return () => ((seed = (seed * 16807) % 2147483647) / 2147483647); }
+const freq = (midi) => 440 * 2 ** ((midi - 69) / 12);
+
+async function renderSample(s) {
+  const sr = 22050, ctx = new OfflineAudioContext(1, sr * s.seconds, sr);
+  const master = ctx.createGain(); master.connect(ctx.destination);
+  master.gain.setValueAtTime(0, 0);
+  master.gain.linearRampToValueAtTime(0.8, 1);
+  master.gain.setValueAtTime(0.8, s.seconds - 2);
+  master.gain.linearRampToValueAtTime(0, s.seconds - 0.05);
+  const tone = ctx.createBiquadFilter(); tone.type = "lowpass"; tone.frequency.value = s.wave === "sawtooth" ? 1800 : 5000; tone.connect(master);
+  const note = (midi, t, len, vol, type) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq(midi);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0008, t + len);
+    o.connect(g).connect(tone); o.start(t); o.stop(t + len + 0.05);
+  };
+  const rand = rng(s.seed), beat = 60 / s.bpm, eighth = beat / 2;
+  const third = s.scale.includes(3) ? 3 : 4, arp = [0, 7, 12, 12 + third, 12, 7, third, 7];
+  const steps = Math.floor((s.seconds - 1.5) / eighth);
+  for (let i = 0; i < steps; i++) {
+    const t = i * eighth, bar = Math.floor(i / 8), chord = s.root + s.chords[bar % s.chords.length];
+    note(chord - 12 + arp[i % 8], t, eighth * 1.6, 0.07, s.wave);
+    if (i % 4 === 0) note(chord - 24, t, beat * 1.8, 0.2, "sine");
+    if (bar >= 2 && rand() < 0.45) note(s.root + 12 + s.scale[Math.floor(rand() * s.scale.length)], t, beat * 1.2, 0.09, "triangle");
+  }
+  return wav(await ctx.startRendering());
+}
+function wav(buffer) {
+  const data = buffer.getChannelData(0), sr = buffer.sampleRate, n = data.length;
+  const out = new DataView(new ArrayBuffer(44 + n * 2));
+  const str = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); out.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt ");
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+  str(36, "data"); out.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, data[i])) * 0x7fff, true);
+  return new Blob([out], { type: "audio/wav" });
+}
+
+async function loadSamples() {
+  $("art").src = placeholderArt("");
+  try {
+    for (const s of SAMPLES) {
+      const blob = await renderSample(s);
+      if (queue.length && !queue[0].sample) return; // you added your own music while samples were loading
+      queue.push({
+        title: s.title, artist: "Bonesy's Samples", album: "Sample Tapes",
+        art: sampleArt(s.art), src: URL.createObjectURL(blob), duration: s.seconds, sample: true,
+      });
+      if (index < 0) select(0); else { renderNow(); renderList(); }
+    }
+  } catch {
+    $("title").textContent = "Add music to start";
+    $("position").textContent = "";
+    status("The sample songs couldn't be generated in this browser. Your own files still work.");
+  }
+}
+loadSamples();
+</script>
