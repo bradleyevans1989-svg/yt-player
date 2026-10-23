@@ -1,4 +1,4 @@
-# Bonesy's Song Player: ad-free YouTube songs
+# Bonesy's Music Player: ad-free YouTube songs
 
 A small personal web app. You search YouTube, build a queue, and it plays the audio stream
 directly with [yt-dlp](https://github.com/yt-dlp/yt-dlp), so no ads are played and no video is downloaded.
@@ -14,7 +14,7 @@ Lock-screen and media-key controls work on phones and laptops.
 irm https://raw.githubusercontent.com/bradleyevans1989-svg/yt-player/main/install.ps1 | iex
 ```
 
-It installs Python if needed, puts it in `%LOCALAPPDATA%\BonesySongPlayer`, and adds a **Bonesy's Song Player** icon to your desktop
+It installs Python if needed, puts it in `%LOCALAPPDATA%\BonesySongPlayer`, and adds a **Bonesy's Music Player** icon to your desktop
 and Start menu. The icon opens the player in its own window with no console. Each launch pulls the latest
 version from GitHub and updates yt-dlp once a day. The server stops a few minutes after you close the window.
 If something goes wrong, check `%LOCALAPPDATA%\BonesySongPlayer\tunes.log`.

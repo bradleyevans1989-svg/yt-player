@@ -1,4 +1,4 @@
-"""Start Bonesy's Song Player without a console window: update, run the server, open the player.
+"""Start Bonesy's Music Player without a console window: update, run the server, open the player.
 
 Used by the desktop shortcut that install.ps1 creates. The server shuts itself
 down a few minutes after the player window is closed.

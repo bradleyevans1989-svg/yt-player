@@ -1,9 +1,9 @@
-# Bonesy's Song Player installer for Windows. Run in PowerShell:
+# Bonesy's Music Player installer for Windows. Run in PowerShell:
 #   irm https://raw.githubusercontent.com/bradleyevans1989-svg/yt-player/main/install.ps1 | iex
 $ErrorActionPreference = 'Stop'
 $Repo = 'bradleyevans1989-svg/yt-player'
 $Dir = Join-Path $env:LOCALAPPDATA 'BonesySongPlayer'
-$Name = "Bonesy's Song Player"
+$Name = "Bonesy's Music Player"
 
 function Refresh-Path {
     $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
@@ -50,6 +50,8 @@ $targets = @(
     (Join-Path ([Environment]::GetFolderPath('Programs')) "$Name.lnk")
 )
 foreach ($path in $targets) {
+    # Shortcuts from before the rename to Music Player
+    Remove-Item ($path -replace 'Music Player', 'Song Player') -ErrorAction SilentlyContinue
     $lnk = $shell.CreateShortcut($path)
     $lnk.TargetPath = $pythonw
     $lnk.Arguments = '"' + (Join-Path $Dir 'launcher.pyw') + '"'

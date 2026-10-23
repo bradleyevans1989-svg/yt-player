@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bonesy's Song Player</title>
-<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<title>Bonesy's Music Player</title>
+<link rel="icon" href="/static/icon-64.png" type="image/png">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="manifest" href="/static/manifest.webmanifest">
@@ -37,12 +37,12 @@
   /* Now playing */
   .now { position:sticky; top:0; height:100vh; overflow-y:auto; padding:40px 0; display:flex; flex-direction:column; gap:32px; }
   .brand { display:flex; align-items:center; gap:10px; color:var(--text); text-decoration:none; font:650 17px var(--font-display); letter-spacing:-.01em; }
-  .brand img { width:32px; height:32px; border-radius:8px; }
+  .brand img { width:36px; height:36px; }
   .art { position:relative; width:100%; aspect-ratio:1; border-radius:6px; overflow:hidden; background:var(--surface); box-shadow:0 1px 2px rgba(0,0,0,.06), 0 24px 48px -24px rgba(0,0,0,.28); }
   .art img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   /* YouTube's hqdefault thumbnails are 4:3 with black bars around a 16:9 picture: zoom past the bars to a centre square. */
   .art img.yt { width:auto; height:133.4%; inset:auto; left:50%; top:50%; transform:translate(-50%, -50%); }
-  .art img.empty { object-fit:contain; padding:22%; opacity:.5; }
+  .art img.empty { object-fit:contain; padding:8%; }
   .eyebrow, h2 { margin:0; font-size:12px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-variant-numeric:tabular-nums; }
   .eyebrow { margin-bottom:12px; }
   h1 { margin:0; font:650 clamp(26px, 2.8vw, 36px)/1.1 var(--font-display); letter-spacing:-.02em; text-wrap:balance; overflow-wrap:anywhere; }
@@ -117,8 +117,8 @@
 <body>
 <div class="app">
   <aside class="now">
-    <a href="#" class="brand" id="home" title="Home"><img src="/static/logo.svg" alt="">Bonesy's Song Player</a>
-    <div class="art"><img id="art" class="empty" src="/static/logo.svg" alt=""></div>
+    <a href="#" class="brand" id="home" title="Home"><img src="/static/icon-64.png" alt="">Bonesy's Music Player</a>
+    <div class="art"><img id="art" class="empty" src="/static/logo.webp" alt="Bonesy's Music Player logo"></div>
     <div>
       <p class="eyebrow" id="position">Nothing playing</p>
       <h1 id="nowTitle">Search for a song to start</h1>
@@ -182,7 +182,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
-const APP = "Bonesy's Song Player";
+const APP = "Bonesy's Music Player";
 const PLAY = '<path d="M7 4.5v15L20 12z"/>';
 const PAUSE = '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>';
 const PLUS = '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>';
