@@ -74,6 +74,9 @@
   input[type=search]:focus { outline:none; border-color:var(--accent); background:var(--bg); }
   .text-btn { font-weight:600; color:var(--accent); padding:4px 0; }
   .text-btn:hover { text-decoration:underline; text-underline-offset:3px; }
+  .text-btn.quiet { color:var(--muted); font-weight:500; }
+  .text-btn.quiet:hover { color:var(--text); }
+  .head-actions { display:flex; gap:20px; font-size:14px; }
   section { display:grid; gap:12px; }
   .head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding-bottom:12px; border-bottom:1px solid var(--line); }
   ul { list-style:none; margin:0; padding:0; }
@@ -154,7 +157,7 @@
       <input id="q" type="search" placeholder="Search songs or artists" autocomplete="off" autofocus aria-label="Search songs or artists">
     </form>
     <section>
-      <div class="head"><h2>Up next</h2></div>
+      <div class="head"><h2>Up next</h2><div class="head-actions"><button class="text-btn" id="topShuffle" type="button" title="Replace the queue with this week's top songs, shuffled" hidden>Shuffle Top 100</button><button class="text-btn quiet" id="clear" type="button" title="Clear the queue (keeps the song that's playing)" hidden>Clear</button></div></div>
       <ul id="queue"></ul>
     </section>
     <section id="resultsView" hidden>
@@ -224,6 +227,7 @@ function row(track, buttons) {
 function renderQueue() {
   const ul = $("queue");
   ul.replaceChildren();
+  $("clear").hidden = !queue.length;
   if (!queue.length) {
     ul.innerHTML = `<li class="empty">Queue is empty. Search for something and click a song, or + to add it.</li>`;
     return;
@@ -241,7 +245,16 @@ function renderQueue() {
 function renderNow() {
   const t = queue[index];
   $("play").disabled = $("seek").disabled = !t;
-  if (!t) return;
+  if (!t) {
+    $("art").className = "empty"; $("art").src = "/static/logo.webp"; $("art").alt = `${APP} logo`;
+    $("position").textContent = "Nothing playing";
+    $("nowTitle").textContent = "Search for a song to start";
+    $("nowArtist").textContent = "";
+    $("cur").textContent = $("dur").textContent = "0:00";
+    $("seek").value = 0; $("seek").style.setProperty("--p", "0%");
+    document.title = APP;
+    return;
+  }
   const art = $("art");
   art.className = t.artwork ? "" : "yt";
   art.src = t.artwork ? t.artwork.replace("300x300", "600x600") : `https://i.ytimg.com/vi/${t.id}/hqdefault.jpg`;
@@ -253,7 +266,7 @@ function renderNow() {
   if ("mediaSession" in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title, artist: t.channel,
-      artwork: [t.artwork ? { src: t.artwork, sizes: "300x300" } : { src: t.thumbnail, sizes: "320x180" }],
+      artwork: t.artwork ? [{ src: t.artwork, sizes: "300x300" }] : t.thumbnail ? [{ src: t.thumbnail, sizes: "320x180" }] : [],
     });
   }
 }
@@ -274,15 +287,59 @@ function renderPlaying() {
   $("play").title = playing ? "Pause (Space)" : "Play (Space)";
 }
 
-function play(i) {
+async function play(i) {
   if (i < 0 || i >= queue.length) return;
   index = i;
   const t = queue[i];
+  if (!t.id) {
+    // A chart song that hasn't been looked up on YouTube yet.
+    audio.pause();
+    save(); renderQueue(); renderNow();
+    status(`Finding “${t.title}”…`);
+    const found = await resolve(t);
+    if (queue[index] !== t) return; // moved on while searching
+    if (!found) { status(`Couldn't find “${t.title}” on YouTube, skipping it.`); setTimeout(next, 1500); return; }
+  }
   remember(t);
   audio.src = `/api/stream/${t.id}`;
   audio.play().catch(() => {});
   status("");
   save(); renderQueue(); renderNow(); renderTime();
+  if (queue[index + 1] && !queue[index + 1].id) resolve(queue[index + 1]).then(save); // look up the next one early
+}
+// Fill in a chart song's YouTube id, keeping the chart's title, artist and cover.
+const lookups = new Map();
+function resolve(t) {
+  if (t.id) return Promise.resolve(true);
+  if (!lookups.has(t)) lookups.set(t, (async () => {
+    try {
+      const res = await fetch(`/api/search?n=1&q=${encodeURIComponent(`${t.channel} ${t.title}`)}`);
+      const [hit] = await res.json();
+      if (!res.ok || !hit) return false;
+      Object.assign(t, { id: hit.id, duration: hit.duration, thumbnail: hit.thumbnail });
+      return true;
+    } catch { return false; } finally { lookups.delete(t); }
+  })());
+  return lookups.get(t);
+}
+function clearQueue() {
+  const current = !audio.paused && queue[index];
+  queue = current ? [current] : [];
+  index = current ? 0 : -1;
+  if (!current) { audio.pause(); audio.removeAttribute("src"); audio.load(); status(""); }
+  save(); renderQueue(); renderNow(); renderTime(); renderPlaying();
+}
+// Replace the queue with the chart, shuffled, and start playing it.
+let chartSongs = [];
+function shuffleTop() {
+  if (!chartSongs.length) return;
+  const songs = chartSongs.map((s) => ({ title: s.title, channel: s.artist, artwork: s.artwork }));
+  for (let i = songs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [songs[i], songs[j]] = [songs[j], songs[i]];
+  }
+  queue = songs; index = -1;
+  play(0);
 }
 function toggle() {
   if (!queue[index]) return;
@@ -396,6 +453,9 @@ async function loadCharts() {
   try { data = await (await fetch("/api/charts")).json(); } catch {}
   $("topArtists").replaceChildren(...data.artists.slice(0, 20).map(chip));
   $("topSongsSection").hidden = !data.songs.length;
+  chartSongs = data.songs;
+  $("topShuffle").hidden = !data.songs.length;
+  $("topShuffle").textContent = `Shuffle Top ${data.songs.length}`;
   $("topSongs").replaceChildren(...data.songs.map((song, i) => {
     const card = document.createElement("div");
     card.className = "card"; card.title = "Click to play";
@@ -410,6 +470,8 @@ async function loadCharts() {
 }
 
 $("play").onclick = toggle;
+$("clear").onclick = clearQueue;
+$("topShuffle").onclick = shuffleTop;
 $("next").onclick = next;
 $("prev").onclick = prev;
 $("autoplay").onclick = () => {
@@ -474,7 +536,7 @@ ping(); setInterval(ping, 30000);
 renderQueue();
 renderMine();
 loadCharts();
-if (queue[index]) { renderNow(); audio.src = `/api/stream/${queue[index].id}`; renderTime(); }
+if (queue[index]) { renderNow(); if (queue[index].id) audio.src = `/api/stream/${queue[index].id}`; renderTime(); }
 </script>
 </body>
 </html>
