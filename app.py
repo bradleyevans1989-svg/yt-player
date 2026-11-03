@@ -20,7 +20,11 @@ STREAM_TTL = 60 * 60  # stream URLs from YouTube expire after a few hours
 _stream_cache = {}
 _cache_lock = threading.Lock()
 
-CHART_URL = "https://rss.applemarketingtools.com/api/v2/au/music/most-played/50/songs.json"
+# Apple serves the chart in sizes up to 100; fall back to 50 if the bigger one fails.
+CHART_URLS = [
+    "https://rss.applemarketingtools.com/api/v2/au/music/most-played/100/songs.json",
+    "https://rss.applemarketingtools.com/api/v2/au/music/most-played/50/songs.json",
+]
 CHART_TTL = 6 * 60 * 60
 # Shown if the chart feed can't be reached.
 FALLBACK_ARTISTS = [
@@ -100,8 +104,11 @@ def top_in_australia():
     """Top songs in Australia (Apple Music's most-played chart) and their artists."""
     if _chart_cache["data"] and _chart_cache["expires"] > time.time():
         return _chart_cache["data"]
-    try:
-        feed = requests.get(CHART_URL, timeout=10).json()["feed"]["results"]
+    for url in CHART_URLS:
+        try:
+            feed = requests.get(url, timeout=10).json()["feed"]["results"]
+        except Exception:
+            continue
         songs = [{
             "title": item["name"],
             "artist": item["artistName"],
@@ -111,8 +118,7 @@ def top_in_australia():
         data = {"songs": songs, "artists": artists}
         _chart_cache.update(data=data, expires=time.time() + CHART_TTL)
         return data
-    except Exception:
-        return {"songs": [], "artists": FALLBACK_ARTISTS}
+    return {"songs": [], "artists": FALLBACK_ARTISTS}
 
 
 def similar_songs(video_id, limit=10):
