@@ -42,6 +42,8 @@ _chart_cache = {"data": None, "expires": 0}
 
 # Updated by the page's heartbeat; the launcher exits once the window is closed.
 last_seen = time.time()
+# Set when the page says it's closing; a reload pings again straight after.
+closed_at = None
 
 
 def _thumb(video_id):
@@ -101,8 +103,25 @@ def favicon():
 
 @app.post("/api/ping")
 def api_ping():
-    global last_seen
+    global last_seen, closed_at
     last_seen = time.time()
+    closed_at = None
+    return "", 204
+
+
+@app.post("/api/bye")
+def api_bye():
+    global closed_at
+    closed_at = time.time()
+    return "", 204
+
+
+@app.post("/api/quit")
+def api_quit():
+    """Lets the launcher stop an older copy of the server so it can update."""
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        abort(403)
+    threading.Timer(0.3, os._exit, args=(0,)).start()
     return "", 204
 
 

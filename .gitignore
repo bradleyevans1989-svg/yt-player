@@ -4,3 +4,4 @@ __pycache__/
 .state.json
 tunes.log
 .artist_images.json
+.server.pid

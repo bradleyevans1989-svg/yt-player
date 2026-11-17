@@ -1024,6 +1024,8 @@ document.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target !
 // Heartbeat so the desktop launcher knows the window is still open.
 const ping = () => fetch("/api/ping", { method: "POST" }).catch(() => {});
 ping(); setInterval(ping, 30000);
+// Tell the launcher the window is closing so it can shut down (a reload pings again straight away).
+addEventListener("pagehide", () => navigator.sendBeacon("/api/bye"));
 showAutoplay(); showRepeat();
 renderQueue(); renderNow(); renderMine(); renderRecent(); renderFavs(); renderHero();
 loadCharts();
