@@ -176,6 +176,22 @@
   .play:not(:disabled):hover { transform:scale(1.06); }
   .seek { width:100%; display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:14px; font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .seek span:first-child { text-align:right; min-width:4ch; }
+  /* Seek bar: a row of dots, played ones in a pulsing purple-to-pink gradient, with a headphone skull as the handle. */
+  .dotseek { --p:0%; --thumb:30px; --gap:13px; position:relative; height:32px; }
+  .dotseek .dots { position:absolute; left:calc(var(--thumb) / 2); right:calc(var(--thumb) / 2); top:50%; height:10px; transform:translateY(-50%); pointer-events:none;
+    background:radial-gradient(circle, #6f69a0 3px, transparent 3.6px) 0 50% / var(--gap) 10px repeat-x; }
+  .dotseek .dots i { position:absolute; inset:0 auto 0 0; width:var(--p); background:linear-gradient(90deg, #7b3cff, #e23ddc 60%, #ff2d8a);
+    -webkit-mask:radial-gradient(circle, #000 3.4px, transparent 4px) 0 50% / var(--gap) 10px repeat-x; mask:radial-gradient(circle, #000 3.4px, transparent 4px) 0 50% / var(--gap) 10px repeat-x; }
+  body.is-playing .dotseek .dots i { animation:dotpulse 1.4s ease-in-out infinite; }
+  @keyframes dotpulse { 0%, 100% { filter:brightness(1) drop-shadow(0 0 0 transparent); } 50% { filter:brightness(1.35) drop-shadow(0 0 4px rgba(226,61,220,.9)); } }
+  #seek { -webkit-appearance:none; appearance:none; position:absolute; inset:0; width:100%; height:100%; margin:0; background:transparent; cursor:pointer; }
+  #seek::-webkit-slider-runnable-track { height:100%; background:transparent; }
+  #seek::-moz-range-track { background:transparent; }
+  #seek::-webkit-slider-thumb { -webkit-appearance:none; width:var(--thumb); height:var(--thumb); margin-top:1px; border:0; border-radius:0; background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='%237b3cff'/><stop offset='1' stop-color='%23ff2d8a'/></linearGradient></defs><path d='M5 17a11 11 0 0 1 22 0' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/><rect x='2' y='15' width='6' height='10' rx='3' fill='%237b3cff'/><rect x='24' y='15' width='6' height='10' rx='3' fill='%23ff2d8a'/><path d='M16 8.5c-5 0-8 3.4-8 8 0 2.6 1.2 4.4 3 5.4V26a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-4.1c1.8-1 3-2.8 3-5.4 0-4.6-3-8-8-8z' fill='%23fff'/><circle cx='12.6' cy='17' r='2.3' fill='%230d0a22'/><circle cx='19.4' cy='17' r='2.3' fill='%230d0a22'/><path d='M16 19.6l-1.2 2.1h2.4z' fill='%230d0a22'/><path d='M14 24.2v2.6M16 24.2v2.6M18 24.2v2.6' stroke='%230d0a22' stroke-width='.9'/></svg>") center / contain no-repeat; filter:drop-shadow(0 2px 6px rgba(226,61,220,.55)); transition:transform .15s; }
+  #seek::-moz-range-thumb { width:var(--thumb); height:var(--thumb); border:0; border-radius:0; background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='%237b3cff'/><stop offset='1' stop-color='%23ff2d8a'/></linearGradient></defs><path d='M5 17a11 11 0 0 1 22 0' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/><rect x='2' y='15' width='6' height='10' rx='3' fill='%237b3cff'/><rect x='24' y='15' width='6' height='10' rx='3' fill='%23ff2d8a'/><path d='M16 8.5c-5 0-8 3.4-8 8 0 2.6 1.2 4.4 3 5.4V26a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-4.1c1.8-1 3-2.8 3-5.4 0-4.6-3-8-8-8z' fill='%23fff'/><circle cx='12.6' cy='17' r='2.3' fill='%230d0a22'/><circle cx='19.4' cy='17' r='2.3' fill='%230d0a22'/><path d='M16 19.6l-1.2 2.1h2.4z' fill='%230d0a22'/><path d='M14 24.2v2.6M16 24.2v2.6M18 24.2v2.6' stroke='%230d0a22' stroke-width='.9'/></svg>") center / contain no-repeat; }
+  #seek:not(:disabled):hover::-webkit-slider-thumb, #seek:active::-webkit-slider-thumb { transform:scale(1.15); }
+  #seek:disabled { cursor:default; }
+  #seek:disabled::-webkit-slider-thumb { filter:grayscale(1) opacity(.6); }
   .right-ctl { display:flex; align-items:center; justify-content:flex-end; gap:6px; }
   .range { --p:0%; -webkit-appearance:none; appearance:none; width:100%; height:18px; margin:0; background:transparent; cursor:pointer; }
   .range::-webkit-slider-runnable-track { height:5px; border-radius:3px; background:linear-gradient(to right, var(--accent) 0, var(--accent-2) var(--p), var(--raise-2) var(--p)); }
@@ -225,6 +241,9 @@
   /* Mini player: the whole window becomes one small bar. */
   .minibar { display:none; }
   body.mini .shell, body.mini .toast { display:none; }
+  body.mini .minibar { cursor:grab; touch-action:none; user-select:none; }
+  body.mini .minibar.dragging { cursor:grabbing; }
+  body.mini .minibar button, body.mini .mseek { cursor:pointer; }
   body.mini .minibar { position:fixed; inset:0; display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:12px; padding:10px 12px 14px; background:linear-gradient(110deg, #1f1d6b, #3a1a6e 60%, #6b1f78); }
   .mthumb { width:56px; height:56px; border-radius:8px; object-fit:cover; background:var(--raise); box-shadow:0 4px 16px -4px rgba(226,61,220,.6); }
   .mtext { min-width:0; }
@@ -237,7 +256,7 @@
   .mseek { position:absolute; left:0; right:0; bottom:0; height:5px; background:rgba(255,255,255,.15); cursor:pointer; }
   .mseek i { position:absolute; inset:0 auto 0 0; background:var(--grad); }
   @media (max-width:340px) { body.mini .mtext, #miniHeart { display:none; } body.mini .minibar { grid-template-columns:auto 1fr; } .mctl { justify-content:flex-end; } }
-  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
 </style>
 </head>
 <body>
@@ -352,7 +371,7 @@
       </div>
       <div class="seek">
         <span id="cur">0:00</span>
-        <input type="range" class="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled>
+        <div class="dotseek" id="dotSeek"><div class="dots" aria-hidden="true"><i></i></div><input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled></div>
         <span id="dur">0:00</span>
       </div>
     </div>
@@ -518,7 +537,7 @@ function renderNow() {
     $("barArtist").textContent = APP;
     $("barThumb").src = "/static/icon-64.png";
     $("cur").textContent = $("dur").textContent = "0:00";
-    $("seek").value = 0; $("seek").style.setProperty("--p", "0%");
+    $("seek").value = 0; setSeekP(0);
     document.title = APP;
   } else {
     art.className = t.artwork ? "" : t.id ? "yt" : "logo";
@@ -554,12 +573,14 @@ function renderHearts() {
 }
 $("nowHeart").onclick = $("barHeart").onclick = () => toggleFav(queue[index]);
 
+// The seek bar's played dots follow --p on its wrapper.
+const setSeekP = (p) => $("dotSeek").style.setProperty("--p", `${Math.max(0, Math.min(1, p)) * 100}%`);
 function renderTime() {
   const d = audio.duration || queue[index]?.duration || 0;
   if (!dragging) {
     const p = d && isFinite(d) ? audio.currentTime / d : 0;
     $("seek").value = Math.round(p * 1000);
-    $("seek").style.setProperty("--p", `${p * 100}%`);
+    setSeekP(p);
     $("cur").textContent = fmt(audio.currentTime) || "0:00";
   }
   $("dur").textContent = fmt(d) || "0:00";
@@ -570,6 +591,7 @@ function renderPlaying() {
   $("playIcon").innerHTML = playing ? PAUSE : PLAY;
   $("play").setAttribute("aria-label", playing ? "Pause" : "Play");
   $("play").title = playing ? "Pause (Space)" : "Play (Space)";
+  document.body.classList.toggle("is-playing", playing);
   syncMini();
 }
 
@@ -905,7 +927,7 @@ async function setMini(on) {
     if (res.ok) return;
   } catch {}
   try {
-    if (on) { fullSize = [outerWidth, outerHeight]; resizeTo(400, 150); }
+    if (on) { fullSize = [outerWidth, outerHeight]; resizeTo(490, 100); }
     else resizeTo(...(fullSize || [1400, 900]));
   } catch {}
 }
@@ -934,6 +956,34 @@ $("miniPlay").onclick = toggle;
 $("miniPrev").onclick = prev;
 $("miniNext").onclick = next;
 $("miniHeart").onclick = () => toggleFav(queue[index]);
+// Drag the mini bar to move the window (it has no title bar). Moves are sent once per frame.
+let drag = null;
+$("miniBar").addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest("button, .mseek")) return;
+  drag = { x: e.screenX, y: e.screenY, dx: 0, dy: 0, busy: false, moved: false };
+  $("miniBar").setPointerCapture(e.pointerId);
+});
+$("miniBar").addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  drag.dx += e.screenX - drag.x; drag.dy += e.screenY - drag.y;
+  drag.x = e.screenX; drag.y = e.screenY;
+  sendMove();
+});
+const endDrag = () => { drag = null; $("miniBar").classList.remove("dragging"); };
+$("miniBar").addEventListener("pointerup", endDrag);
+$("miniBar").addEventListener("pointercancel", endDrag);
+async function sendMove() {
+  if (!drag || drag.busy || (!drag.dx && !drag.dy)) return;
+  const d = drag, dx = d.dx, dy = d.dy;
+  d.dx = d.dy = 0; d.busy = true;
+  $("miniBar").classList.add("dragging");
+  try {
+    const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "move", dx, dy }) });
+    if (!res.ok) { try { moveBy(dx, dy); } catch {} }
+  } catch {}
+  d.busy = false;
+  if (drag === d) sendMove();
+}
 $("miniSeek").onclick = (e) => {
   const r = e.currentTarget.getBoundingClientRect();
   if (audio.duration) audio.currentTime = audio.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
@@ -956,7 +1006,7 @@ const seek = $("seek");
 seek.addEventListener("pointerdown", () => { dragging = true; });
 seek.addEventListener("input", () => {
   const d = audio.duration || 0;
-  seek.style.setProperty("--p", `${seek.value / 10}%`);
+  setSeekP(seek.value / 1000);
   $("cur").textContent = fmt(d * seek.value / 1000) || "0:00";
   if (!dragging && d) audio.currentTime = d * seek.value / 1000; // keyboard on the slider
 });
