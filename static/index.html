@@ -985,7 +985,8 @@ $("miniNext").onclick = next;
 $("miniHeart").onclick = () => toggleFav(queue[index]);
 // Desktop window controls. On Windows the server clips off the browser's title bar, so the page
 // supplies its own: a drag strip with minimise / maximise / close, and resize edges.
-const pageFrame = () => ({ top: outerHeight - innerHeight, side: (outerWidth - innerWidth) / 2 });
+// The page size in real pixels lets the server work out where the page sits inside the window.
+const pageFrame = () => ({ iw: innerWidth * devicePixelRatio, ih: innerHeight * devicePixelRatio });
 async function winCmd(body) {
   try {
     const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, frame: pageFrame() }) });
