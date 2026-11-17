@@ -43,8 +43,43 @@ def save_state(state):
 
 
 def pip_install(*args):
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", *args],
-                   cwd=HERE, creationflags=NO_WINDOW, check=False)
+    """Install packages; True if pip succeeded. Failures are written to tunes.log."""
+    try:
+        done = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--disable-pip-version-check", *args],
+                              cwd=HERE, creationflags=NO_WINDOW, check=False, timeout=600,
+                              stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except Exception as exc:
+        print(f"pip install {' '.join(args)} failed: {exc!r}", flush=True)
+        return False
+    if done.returncode:
+        out = done.stdout.decode(errors="replace").strip()[-3000:]
+        print(f"pip install {' '.join(args)} failed ({done.returncode}):\n{out}", flush=True)
+    return done.returncode == 0
+
+
+def import_webview():
+    """The pywebview module, installing it first if it's missing (at most once a day)."""
+    try:
+        import webview
+        return webview
+    except ImportError as exc:
+        print(f"borderless window unavailable: {exc!r}", flush=True)
+    state = load_state()
+    if time.time() - state.get("webview_tried", 0) < 24 * 60 * 60:
+        return None
+    state["webview_tried"] = time.time()
+    save_state(state)
+    print("installing pywebview...", flush=True)
+    if not pip_install("pywebview"):
+        return None
+    import importlib
+    importlib.invalidate_caches()
+    try:
+        import webview
+        return webview
+    except Exception as exc:
+        print(f"pywebview installed but won't load: {exc!r}", flush=True)
+        return None
 
 
 def latest_sha():
@@ -137,10 +172,12 @@ def run_window(app_module):
     if not os.path.exists(app_module.STATE_FILE):
         return False
     try:
-        import webview
+        webview = import_webview()
         import window_ctl
     except Exception as exc:
         print(f"borderless window unavailable: {exc!r}", flush=True)
+        return False
+    if webview is None:
         return False
     window_ctl.borderless = True
     win = webview.create_window(window_ctl.APP_TITLE, URL, width=1400, height=900, frameless=True,
