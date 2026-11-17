@@ -4,12 +4,13 @@ The desktop launcher opens the player as an Edge or Chrome app window whose titl
 ends with the app's name. These helpers find that window and resize it with the
 Win32 API through ctypes, so no extra packages are needed.
 
-Edge and Chrome draw their own title bar, so it can't be switched off with window
-styles. Instead the window is clipped with a window region to just the web page
-area: the title bar is still there, but cut off and invisible. The page draws its
-own drag strip, window buttons and resize edges, and asks the server to move,
-resize, minimise, maximise or close the window.
+When the launcher hosts the player in its own borderless window (pywebview), it
+sets borderless and the page draws its own drag strip, window buttons and resize
+edges, asking the server to move, resize, minimise, maximise or close the window.
+Otherwise the player is an Edge/Chrome app window, found by its title; that keeps
+the browser's own title bar, and only the mini player resizing applies.
 """
+import os
 import sys
 
 APP_TITLE = "Bonesy's Music Player"
@@ -18,14 +19,16 @@ FULL_SIZE = (1400, 900)      # used if the old size wasn't remembered
 MIN_SIZE = (720, 480)        # smallest full player, in CSS pixels
 MARGIN = 16
 
-_saved = {}  # hwnd -> (rect, was_maximized)
+_saved = {}      # hwnd -> (rect, was_maximized) before the mini player
+_maximized = {}  # hwnd -> rect before our own maximise (borderless window)
+borderless = False  # set by the launcher when it hosts the player in its own borderless window
+fixed_hwnd = None   # that window's handle, once it has been shown
 
 if sys.platform == "win32":
     import ctypes
     from ctypes import wintypes
 
     user32 = ctypes.windll.user32
-    gdi32 = ctypes.windll.gdi32
     HWND_TOPMOST, HWND_NOTOPMOST = -1, -2
     SWP_SHOWWINDOW, SW_RESTORE, SW_MAXIMIZE, SW_MINIMIZE = 0x0040, 9, 3, 6
     WM_CLOSE = 0x0010
@@ -45,17 +48,16 @@ if sys.platform == "win32":
         "GetClassNameW": [H, wintypes.LPWSTR, ctypes.c_int], "IsWindowVisible": [H],
         "IsZoomed": [H], "IsIconic": [H], "ShowWindow": [H, ctypes.c_int], "GetDpiForWindow": [H],
         "PostMessageW": [H, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM],
+        "IsWindow": [H], "SetForegroundWindow": [H],
         "GetWindowRect": [H, ctypes.POINTER(wintypes.RECT)],
         "MonitorFromWindow": [H, wintypes.DWORD],
         "SetWindowPos": [H, H, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT],
-        "SetWindowRgn": [H, wintypes.HANDLE, wintypes.BOOL],
         "EnumChildWindows": [H, WNDENUMPROC, wintypes.LPARAM],
+        "GetWindowThreadProcessId": [H, ctypes.POINTER(wintypes.DWORD)],
     }.items():
         getattr(user32, name).argtypes = args
     user32.MonitorFromWindow.restype = wintypes.HANDLE
     user32.GetForegroundWindow.restype = H
-    gdi32.CreateRectRgn.argtypes = [ctypes.c_int] * 4
-    gdi32.CreateRectRgn.restype = wintypes.HANDLE
 
 
 def supported():
@@ -75,8 +77,33 @@ def _class(hwnd):
     return buf.value
 
 
+def frameless():
+    return bool(supported() and borderless)
+
+
+def _own_window():
+    """Our borderless window: the handle the launcher gave us, else our process's window with the app's title."""
+    global fixed_hwnd
+    if fixed_hwnd and user32.IsWindow(fixed_hwnd):
+        return fixed_hwnd
+    found = []
+
+    def check(hwnd, _):
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value == os.getpid() and user32.IsWindowVisible(hwnd) and _title(hwnd) == APP_TITLE:
+            found.append(hwnd)
+        return True
+
+    user32.EnumWindows(WNDENUMPROC(check), 0)
+    fixed_hwnd = found[0] if found else None
+    return fixed_hwnd
+
+
 def _find_window():
-    """The player's app window: an Edge/Chrome window whose title ends with the app name."""
+    """The player's window: our borderless one, else an Edge/Chrome app window by title."""
+    if frameless():
+        return _own_window()
     found = []
 
     def check(hwnd, _):
@@ -166,19 +193,8 @@ def _frame_offsets(hwnd, scale, page_frame):
     return 0, 0, 0, 0
 
 
-def _clip(hwnd, scale, page_frame):
-    """Cut the window down to the web page, hiding the browser's title bar and borders."""
-    if user32.IsIconic(hwnd):
-        return
-    user32.SetWindowRgn(hwnd, None, False)  # measure the whole window, not an old clip
-    left, top, right, bottom = _frame_offsets(hwnd, scale, page_frame or {})
-    r = _rect(hwnd)
-    w, h = r.right - r.left, r.bottom - r.top
-    user32.SetWindowRgn(hwnd, gdi32.CreateRectRgn(left, top, w - right, h - bottom), True)
-
-
 def command(op, page_frame=None, dx=0.0, dy=0.0, edge=""):
-    """Window commands from the page: clip, move, resize, minimize, maximize, close, mini, full."""
+    """Window commands from the page: move, resize, minimize, maximize, close, focus, mini, full."""
     if not supported():
         return False
     if op in ("mini", "full"):
@@ -189,12 +205,26 @@ def command(op, page_frame=None, dx=0.0, dy=0.0, edge=""):
     if not hwnd:
         return False
     if op == "clip":
-        _clip(hwnd, scale, page_frame)
+        pass  # nothing to clip any more; kept so older pages don't get errors
+    elif op == "focus":
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
+        user32.SetForegroundWindow(hwnd)
     elif op == "minimize":
         user32.ShowWindow(hwnd, SW_MINIMIZE)
     elif op == "maximize":  # toggles
-        user32.ShowWindow(hwnd, SW_RESTORE if user32.IsZoomed(hwnd) else SW_MAXIMIZE)
-        _clip(hwnd, scale, page_frame)
+        if frameless():
+            # A borderless window maximised by Windows would cover the taskbar: fill the work area instead.
+            saved = _maximized.pop(hwnd, None)
+            if saved:
+                x, y, w, h = saved
+            else:
+                r, work = _rect(hwnd), _work_area(hwnd)
+                _maximized[hwnd] = (r.left, r.top, r.right - r.left, r.bottom - r.top)
+                x, y, w, h = work.left, work.top, work.right - work.left, work.bottom - work.top
+            user32.SetWindowPos(hwnd, None, x, y, w, h, SWP_NOZORDER)
+        else:
+            user32.ShowWindow(hwnd, SW_RESTORE if user32.IsZoomed(hwnd) else SW_MAXIMIZE)
     elif op == "close":
         user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)
     elif op == "resize":
@@ -213,7 +243,7 @@ def command(op, page_frame=None, dx=0.0, dy=0.0, edge=""):
         if "b" in edge:
             bottom = max(bottom + ddy, top + min_h)
         user32.SetWindowPos(hwnd, None, left, top, right - left, bottom - top, SWP_NOZORDER | SWP_NOACTIVATE)
-        _clip(hwnd, scale, page_frame)
+        _maximized.pop(hwnd, None)
     else:
         return False
     return True
@@ -235,7 +265,6 @@ def set_mode(mode, page_frame=None):
                 user32.ShowWindow(hwnd, SW_RESTORE)
             r = _rect(hwnd)
             _saved[hwnd] = ((r.left, r.top, r.right, r.bottom), was_max)
-        user32.SetWindowRgn(hwnd, None, True)  # measure the full window, not an old clip
         left, top, right, bottom = _frame_offsets(hwnd, scale, page_frame or {})
         cw, ch = round(MINI_SIZE[0] * scale), round(MINI_SIZE[1] * scale)
         m = round(MARGIN * scale)
@@ -243,8 +272,6 @@ def set_mode(mode, page_frame=None):
         # Put the visible bar (not the hidden title bar) in the bottom-right corner.
         x, y = work.right - m - cw - left, work.bottom - m - ch - top
         user32.SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW)
-        # Show only the page area; the title bar and borders are clipped away.
-        user32.SetWindowRgn(hwnd, gdi32.CreateRectRgn(left, top, left + cw, top + ch), True)
         return True
 
     saved = _saved.pop(hwnd, None)
@@ -260,5 +287,4 @@ def set_mode(mode, page_frame=None):
     user32.SetWindowPos(hwnd, HWND_NOTOPMOST, x, y, w, h, SWP_SHOWWINDOW)
     if was_max:
         user32.ShowWindow(hwnd, SW_MAXIMIZE)
-    _clip(hwnd, scale, page_frame)
     return True

@@ -5,3 +5,6 @@ __pycache__/
 tunes.log
 .artist_images.json
 .server.pid
+.player_state.json
+.player_state.json.tmp
+.webview/

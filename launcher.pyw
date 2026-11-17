@@ -1,7 +1,9 @@
 """Start Bonesy's Music Player without a console window: update, run the server, open the player.
 
-Used by the desktop shortcut that install.ps1 creates. The server shuts itself
-down a few minutes after the player window is closed.
+Used by the desktop shortcut that install.ps1 creates. The player opens in its own
+borderless window (pywebview, the same engine as Edge) and everything stops when
+it's closed. If that can't start, it falls back to an Edge or Chrome app window,
+and the server shuts itself down a few minutes after that window is closed.
 """
 import io
 import json
@@ -126,6 +128,60 @@ def open_window():
     webbrowser.open(URL)
 
 
+def run_window(app_module):
+    """Show the player in a borderless window and block until it closes. False if that isn't possible."""
+    if sys.platform != "win32":
+        return False
+    # The first time, the Edge window opens instead so it can hand its saved queue and
+    # favourites to the server; after that the borderless window restores them from there.
+    if not os.path.exists(app_module.STATE_FILE):
+        return False
+    try:
+        import webview
+        import window_ctl
+    except Exception as exc:
+        print(f"borderless window unavailable: {exc!r}", flush=True)
+        return False
+    window_ctl.borderless = True
+    win = webview.create_window(window_ctl.APP_TITLE, URL, width=1400, height=900, frameless=True,
+                                easy_drag=False, min_size=(100, 50), background_color="#0d0a22")
+
+    def shown(*_):
+        try:
+            window_ctl.fixed_hwnd = int(win.native.Handle.ToInt64())
+        except Exception as exc:
+            print(f"window handle: {exc!r}", flush=True)
+
+    win.events.shown += shown
+    try:
+        webview.start(private_mode=False, storage_path=os.path.join(HERE, ".webview"))
+    except Exception as exc:
+        print(f"borderless window failed: {exc!r}", flush=True)
+        if window_ctl.fixed_hwnd is None:  # it never opened: fall back to Edge
+            window_ctl.borderless = False
+            return False
+    return True
+
+
+def focus_running():
+    """Bring the running player's window to the front. False if there's no window to focus."""
+    try:
+        req = urllib.request.Request(f"{URL}/api/window", data=json.dumps({"mode": "focus"}).encode(),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        return urllib.request.urlopen(req, timeout=3).status == 204
+    except Exception:
+        return False
+
+
+def wait_for_server(timeout=15):
+    end = time.time() + timeout
+    while time.time() < end:
+        if already_running():
+            return True
+        time.sleep(0.1)
+    return False
+
+
 def watch_idle(app_module):
     """Exit soon after the window closes, or once the heartbeat has stopped for a while."""
     while True:
@@ -142,8 +198,12 @@ def main():
     state = load_state()
     latest = latest_sha()
     if already_running():
-        # Reopened while an older version is still winding down: restart it on the new one.
-        if not (latest and latest != state.get("sha") and stop_running_server()):
+        updated = latest and latest != state.get("sha")
+        if not updated and focus_running():
+            return
+        # Reopened while an older version, or a server with no window, is still winding down:
+        # restart it so the newest version opens in a fresh window.
+        if not stop_running_server():
             open_window()
             return
     update(state, latest)
@@ -153,9 +213,13 @@ def main():
     import app as app_module
 
     app_module.last_seen = time.time()
-    threading.Thread(target=watch_idle, args=(app_module,), daemon=True).start()
-    threading.Timer(1.0, open_window).start()
-    app_module.app.run(host="127.0.0.1", port=PORT, threaded=True)
+    threading.Thread(target=lambda: app_module.app.run(host="127.0.0.1", port=PORT, threaded=True),
+                     daemon=True).start()
+    wait_for_server()
+    if run_window(app_module):
+        os._exit(0)
+    open_window()
+    watch_idle(app_module)
 
 
 if __name__ == "__main__":

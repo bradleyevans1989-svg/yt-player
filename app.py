@@ -122,7 +122,7 @@ def api_bye():
 def api_window_info():
     """Whether the server can manage the desktop window (frameless title bar, mini player)."""
     local = request.remote_addr in ("127.0.0.1", "::1")
-    return jsonify({"frameless": local and window_ctl.supported()})
+    return jsonify({"frameless": local and window_ctl.frameless()})
 
 
 @app.post("/api/window")
@@ -132,7 +132,7 @@ def api_window():
         abort(403)
     body = request.get_json(silent=True) or {}
     op = body.get("mode")
-    if op not in ("mini", "full", "move", "resize", "clip", "minimize", "maximize", "close"):
+    if op not in ("mini", "full", "move", "resize", "clip", "minimize", "maximize", "close", "focus"):
         abort(400)
     try:
         done = window_ctl.command(op, page_frame=body.get("frame") or {},
@@ -142,6 +142,39 @@ def api_window():
         print(f"window: {op} failed: {exc!r}", flush=True)
         done = False
     return ("", 204) if done else ("", 501)
+
+
+# The page's saved queue, favourites and settings, copied here so they survive a change of
+# browser engine (the Edge window and the borderless window keep separate storage).
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".player_state.json")
+STATE_MAX = 4 * 1024 * 1024
+
+
+@app.get("/api/state")
+def api_state_get():
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        abort(403)
+    try:
+        with open(STATE_FILE) as f:
+            return jsonify(json.load(f))
+    except (OSError, ValueError):
+        return jsonify({})
+
+
+@app.post("/api/state")
+def api_state_put():
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        abort(403)
+    if (request.content_length or 0) > STATE_MAX:
+        abort(413)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in data.items()):
+        abort(400)
+    tmp = STATE_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f)
+    os.replace(tmp, STATE_FILE)
+    return "", 204
 
 
 @app.post("/api/quit")
