@@ -147,15 +147,23 @@ def move_by(dx, dy):
 
 
 def _frame_offsets(hwnd, scale, page_frame):
-    """Pixels between the window's edges and the web page: (left, top, right, bottom)."""
-    outer, inner = _rect(hwnd), _content_rect(hwnd)
+    """Pixels between the window's edges and the web page: (left, top, right, bottom).
+
+    The page reports its own size in real pixels (innerWidth/innerHeight x devicePixelRatio).
+    The browser's hidden borders are the same width on the left, right and bottom, so the
+    page sits centred horizontally on the bottom border, with the title bar above it.
+    """
+    outer = _rect(hwnd)
+    w, h = outer.right - outer.left, outer.bottom - outer.top
+    iw, ih = float(page_frame.get("iw") or 0), float(page_frame.get("ih") or 0)
+    if 0 < iw <= w and 0 < ih <= h:
+        side = max(0, round((w - iw) / 2))
+        return side, max(0, h - side - round(ih)), side, side
+    inner = _content_rect(hwnd)
     if inner:
         return (inner.left - outer.left, inner.top - outer.top,
                 outer.right - inner.right, outer.bottom - inner.bottom)
-    # Fall back to what the page measured: outer minus inner size, in CSS pixels.
-    side = max(0.0, float(page_frame.get("side") or 0)) * scale
-    top = max(0.0, float(page_frame.get("top") or 0)) * scale
-    return round(side), round(max(0.0, top - side)), round(side), round(side)
+    return 0, 0, 0, 0
 
 
 def _clip(hwnd, scale, page_frame):
