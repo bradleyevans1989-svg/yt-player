@@ -13,6 +13,8 @@ import requests
 import yt_dlp
 from flask import Flask, Response, abort, jsonify, redirect, request, send_from_directory
 
+import window_ctl
+
 app = Flask(__name__, static_folder="static")
 
 YDL_OPTS = {"quiet": True, "no_warnings": True, "skip_download": True}
@@ -114,6 +116,22 @@ def api_bye():
     global closed_at
     closed_at = time.time()
     return "", 204
+
+
+@app.post("/api/window")
+def api_window():
+    """Switch the desktop window between the full player and the mini player."""
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        abort(403)
+    mode = (request.get_json(silent=True) or {}).get("mode")
+    if mode not in ("mini", "full"):
+        abort(400)
+    try:
+        done = window_ctl.set_mode(mode)
+    except Exception as exc:
+        print(f"window: {mode} failed: {exc!r}", flush=True)
+        done = False
+    return ("", 204) if done else ("", 501)
 
 
 @app.post("/api/quit")
