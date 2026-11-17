@@ -222,6 +222,21 @@
     .play { width:48px; height:48px; }
     .row .acts button { opacity:1; }
   }
+  /* Mini player: the whole window becomes one small bar. */
+  .minibar { display:none; }
+  body.mini .shell, body.mini .toast { display:none; }
+  body.mini .minibar { position:fixed; inset:0; display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:12px; padding:10px 12px 14px; background:linear-gradient(110deg, #1f1d6b, #3a1a6e 60%, #6b1f78); }
+  .mthumb { width:56px; height:56px; border-radius:8px; object-fit:cover; background:var(--raise); box-shadow:0 4px 16px -4px rgba(226,61,220,.6); }
+  .mtext { min-width:0; }
+  .mtext div:first-child { font-weight:800; font-size:15px; }
+  .mtext .sub { color:#d9d4f5; font-size:13px; }
+  .mctl { display:flex; align-items:center; gap:2px; }
+  .mctl .ibtn { width:34px; height:34px; }
+  .mctl .play { width:42px; height:42px; margin:0 2px; }
+  .mctl .heart.faved { color:var(--accent); }
+  .mseek { position:absolute; left:0; right:0; bottom:0; height:5px; background:rgba(255,255,255,.15); cursor:pointer; }
+  .mseek i { position:absolute; inset:0 auto 0 0; background:var(--grad); }
+  @media (max-width:340px) { body.mini .mtext, #miniHeart { display:none; } body.mini .minibar { grid-template-columns:auto 1fr; } .mctl { justify-content:flex-end; } }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
 </style>
 </head>
@@ -343,12 +358,24 @@
     </div>
     <div class="right-ctl">
       <button class="ibtn quiet" id="autoplay" title="Autoplay similar songs" aria-label="Autoplay similar songs"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 4a8 8 0 0 1 7.7 6H22l-3 4-3-4h1.6A6 6 0 1 0 16.2 16.2l1.4 1.4A8 8 0 1 1 12 4zm-2 4.5 5 3.5-5 3.5z"/></svg></button>
-      <button class="ibtn quiet" id="miniBtn" title="Mini player: a small window that stays on top" aria-label="Open mini player"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M3 4h18a1 1 0 0 1 1 1v6h-2V6H4v12h7v2H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm11 9h8v7h-8z"/></svg></button>
+      <button class="ibtn quiet" id="miniBtn" title="Mini player: shrink to a small bar that stays on top" aria-label="Switch to the mini player"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M3 4h18a1 1 0 0 1 1 1v6h-2V6H4v12h7v2H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm11 9h8v7h-8z"/></svg></button>
       <button class="ibtn quiet" id="queueBtn" title="Open the queue" aria-label="Open the queue"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h13v2H3zm0 5h13v2H3zm0 5h9v2H3zm13 0v-5l5 3.5z"/></svg></button>
       <button class="ibtn quiet" id="mute" title="Mute" aria-label="Mute"><svg width="22" height="22" viewBox="0 0 24 24" id="muteIcon"></svg></button>
       <input type="range" class="range" id="volume" min="0" max="100" step="1" aria-label="Volume">
     </div>
   </footer>
+</div>
+<div class="minibar" id="miniBar">
+  <img class="mthumb" id="miniThumb" alt="">
+  <div class="mtext"><div class="ellipsis" id="miniTitle"></div><div class="sub ellipsis" id="miniArtist"></div></div>
+  <div class="mctl">
+    <button class="ibtn heart" id="miniHeart" aria-label="Add to favourites"></button>
+    <button class="ibtn" id="miniPrev" title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg></button>
+    <button class="play" id="miniPlay" aria-label="Play"></button>
+    <button class="ibtn" id="miniNext" title="Next" aria-label="Next"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l10.5-7z"/></svg></button>
+    <button class="ibtn quiet" id="miniExpand" title="Back to the full player" aria-label="Back to the full player"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 4h6v2H7.4l4.3 4.3-1.4 1.4L6 7.4V10H4zm16 0v6h-2V7.4l-4.3 4.3-1.4-1.4L16.6 6H14V4zM4 20v-6h2v2.6l4.3-4.3 1.4 1.4L7.4 18H10v2zm16 0h-6v-2h2.6l-4.3-4.3 1.4-1.4 4.3 4.3V14h2z"/></svg></button>
+  </div>
+  <div class="mseek" id="miniSeek" title="Seek"><i id="miniProgress"></i></div>
 </div>
 <p class="toast" id="status" role="status"></p>
 <audio id="audio" preload="none"></audio>
@@ -865,105 +892,52 @@ $("shuffle").onclick = () => {
   if (queue.length > 1) status("Queue shuffled");
 };
 
-// Mini player: a small always-on-top window (Document Picture-in-Picture, in Edge and Chrome).
-const MINI_CSS = `
-  :root { color-scheme:dark; --accent:#e23ddc; --accent-2:#ff4fa3; --muted:#c4bde6; }
-  * { box-sizing:border-box; }
-  html, body { height:100%; margin:0; }
-  body { font:14px/1.35 "Figtree", "Segoe UI", system-ui, sans-serif; color:#f4f1ff; background:#0d0a22; overflow:hidden; user-select:none; -webkit-font-smoothing:antialiased; }
-  button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
-  button:disabled { opacity:.35; cursor:default; }
-  svg { display:block; fill:currentColor; }
-  .bg { position:fixed; inset:-40px; background-size:cover; background-position:center; filter:blur(36px) saturate(1.4) brightness(.45); z-index:-1; transition:background-image .3s; }
-  .wrap { height:100%; display:grid; grid-template-rows:minmax(0, 1fr) auto auto auto; gap:12px; padding:16px; }
-  .art { min-height:0; display:grid; place-items:center; container-type:size; }
-  .art img { width:min(100cqw, 100cqh); height:min(100cqw, 100cqh); object-fit:cover; border-radius:12px; box-shadow:0 12px 40px -8px rgba(226,61,220,.55); background:#1d1745; }
-  .meta { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:8px; }
-  .t { font-weight:800; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .a { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .heart { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:var(--muted); }
-  .heart.faved { color:var(--accent); }
-  .bar { height:5px; border-radius:3px; background:rgba(255,255,255,.18); cursor:pointer; position:relative; }
-  .bar i { position:absolute; inset:0 auto 0 0; border-radius:3px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); }
-  .times { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums; }
-  .ctl { display:flex; justify-content:center; align-items:center; gap:18px; }
-  .ib { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; }
-  .ib:not(:disabled):hover { background:rgba(255,255,255,.12); }
-  .play { width:50px; height:50px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:#fff; box-shadow:0 6px 20px -6px rgba(226,61,220,.9); }
-  /* Short window: thumbnail beside the details. */
-  @media (max-height:300px) {
-    .wrap { grid-template-columns:auto minmax(0, 1fr); grid-template-rows:auto auto auto; gap:8px 14px; padding:12px; align-content:center; }
-    .art { grid-row:1 / span 3; width:min(42vw, calc(100vh - 24px)); height:calc(100vh - 24px); }
-    .ctl { justify-content:flex-start; gap:10px; }
-    .play { width:42px; height:42px; }
-  }
-`;
-let mini = null;
-async function openMini() {
-  if (mini) { mini.win.focus(); return; }
-  if (!("documentPictureInPicture" in window)) { status("The mini player needs the app open in Edge or Chrome."); return; }
-  let win;
-  try { win = await documentPictureInPicture.requestWindow({ width: 320, height: 420 }); }
-  catch { status("Couldn't open the mini player."); return; }
-  const doc = win.document;
-  doc.title = APP;
-  doc.head.innerHTML = `<meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap"><style>${MINI_CSS}</style>`;
-  doc.body.innerHTML = `<div class="bg"></div><div class="wrap">
-    <div class="art"><img alt=""></div>
-    <div class="meta"><div style="min-width:0"><div class="t"></div><div class="a"></div></div><button class="heart"></button></div>
-    <div><div class="bar" title="Seek"><i></i></div><div class="times"><span class="cur"></span><span class="dur"></span></div></div>
-    <div class="ctl">
-      <button class="ib prev" title="Previous" aria-label="Previous">${svg("M6 5h2v14H6zM20 5v14L9.5 12z", 22)}</button>
-      <button class="play" title="Play" aria-label="Play"></button>
-      <button class="ib next" title="Next" aria-label="Next">${svg("M16 5h2v14h-2zM4 5v14l10.5-7z", 22)}</button>
-    </div></div>`;
-  const q = (sel) => doc.querySelector(sel);
-  q(".prev").onclick = prev;
-  q(".next").onclick = next;
-  q(".play").onclick = toggle;
-  q(".heart").onclick = () => toggleFav(queue[index]);
-  q(".bar").onclick = (e) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    if (audio.duration) audio.currentTime = audio.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-  };
-  doc.addEventListener("keydown", (e) => {
-    if (e.code === "Space") { e.preventDefault(); if (!e.repeat) toggle(); }
-    else if (e.key === "ArrowRight" && e.shiftKey) next();
-    else if (e.key === "ArrowLeft" && e.shiftKey) prev();
-  });
-  win.addEventListener("pagehide", () => { mini = null; $("miniBtn").classList.remove("on"); });
-  mini = { win, q, key: null };
-  $("miniBtn").classList.add("on");
+// Mini player: the window itself shrinks to a small always-on-top bar, and expands back.
+// The desktop server resizes the window (Windows); otherwise the page tries to resize itself.
+let isMini = false, fullSize = null;
+async function setMini(on) {
+  isMini = on;
+  document.body.classList.toggle("mini", on);
+  $("miniBtn").classList.toggle("on", on);
   syncMini();
+  try {
+    const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: on ? "mini" : "full" }) });
+    if (res.ok) return;
+  } catch {}
+  try {
+    if (on) { fullSize = [outerWidth, outerHeight]; resizeTo(400, 150); }
+    else resizeTo(...(fullSize || [1400, 900]));
+  } catch {}
 }
 function syncMini() {
-  if (!mini) return;
-  const { q } = mini, t = queue[index];
-  const key = t ? keyOf(t) + (t.id || "") : "";
-  if (mini.key !== key) {
-    mini.key = key;
-    // mqdefault is 16:9 with no black bars, so it crops cleanly to a square.
-    const src = new URL(!t ? "/static/logo.webp" : t.artwork ? t.artwork.replace("300x300", "600x600") : t.id ? `https://i.ytimg.com/vi/${t.id}/mqdefault.jpg` : "/static/logo.webp", location.href).href;
-    q(".art img").src = src;
-    q(".bg").style.backgroundImage = `url("${src}")`;
-    q(".t").textContent = t ? t.title : "Nothing playing";
-    q(".a").textContent = t ? t.channel : "Search for a song to start";
-    mini.win.document.title = t ? `${t.title} · ${APP}` : APP;
-  }
+  if (!isMini) return;
+  const t = queue[index];
+  const src = !t ? "/static/icon-64.png" : thumbOf(t);
+  if ($("miniThumb").getAttribute("src") !== src) $("miniThumb").src = src;
+  $("miniTitle").textContent = t ? t.title : "Nothing playing";
+  $("miniArtist").textContent = t ? t.channel : APP;
+  $("miniPlay").disabled = !t;
+  $("miniPlay").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24">${audio.paused ? PLAY : PAUSE}</svg>`;
+  $("miniPlay").title = audio.paused ? "Play (Space)" : "Pause (Space)";
+  $("miniPlay").setAttribute("aria-label", audio.paused ? "Play" : "Pause");
   const on = isFav(t);
-  q(".heart").disabled = !t;
-  q(".heart").classList.toggle("faved", on);
-  q(".heart").innerHTML = heartIcon(on, 20);
-  q(".heart").title = on ? "Remove from favourites" : "Add to favourites";
-  q(".play").disabled = !t;
-  q(".play").innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24">${audio.paused ? PLAY : PAUSE}</svg>`;
-  q(".play").title = audio.paused ? "Play" : "Pause";
+  $("miniHeart").disabled = !t;
+  $("miniHeart").classList.toggle("faved", on);
+  $("miniHeart").innerHTML = heartIcon(on, 18);
+  $("miniHeart").title = on ? "Remove from favourites" : "Add to favourites";
   const d = audio.duration || t?.duration || 0;
-  q(".bar i").style.width = `${d && isFinite(d) ? (audio.currentTime / d) * 100 : 0}%`;
-  q(".cur").textContent = fmt(audio.currentTime) || "0:00";
-  q(".dur").textContent = fmt(d) || "0:00";
+  $("miniProgress").style.width = `${d && isFinite(d) ? (audio.currentTime / d) * 100 : 0}%`;
 }
-$("miniBtn").onclick = openMini;
+$("miniBtn").onclick = () => setMini(true);
+$("miniExpand").onclick = () => setMini(false);
+$("miniPlay").onclick = toggle;
+$("miniPrev").onclick = prev;
+$("miniNext").onclick = next;
+$("miniHeart").onclick = () => toggleFav(queue[index]);
+$("miniSeek").onclick = (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  if (audio.duration) audio.currentTime = audio.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+};
 
 // Volume
 const vol = $("volume");
