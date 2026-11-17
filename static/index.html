@@ -145,7 +145,7 @@
   .cover img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   /* YouTube's hqdefault thumbnails are 4:3 with black bars around a 16:9 picture: zoom past the bars to a centre square. */
   .cover img.yt { width:auto; height:133.4%; inset:auto; left:50%; top:50%; transform:translate(-50%, -50%); }
-  .cover img.logo { object-fit:contain; padding:10%; }
+  .cover img.logo { object-fit:cover; }
   .now-meta { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:4px 12px; padding-bottom:18px; border-bottom:1px solid var(--line); }
   .now-meta h3 { font-size:24px; font-weight:800; letter-spacing:-.01em; line-height:1.15; overflow-wrap:anywhere; }
   .now-meta p { grid-column:1; font-size:16px; color:var(--muted); }
