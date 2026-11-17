@@ -118,22 +118,28 @@ def api_bye():
     return "", 204
 
 
+@app.get("/api/window")
+def api_window_info():
+    """Whether the server can manage the desktop window (frameless title bar, mini player)."""
+    local = request.remote_addr in ("127.0.0.1", "::1")
+    return jsonify({"frameless": local and window_ctl.supported()})
+
+
 @app.post("/api/window")
 def api_window():
-    """Switch the desktop window between the full player and the mini player."""
+    """Window commands from the page: mini/full player, move, resize, minimise, maximise, close."""
     if request.remote_addr not in ("127.0.0.1", "::1"):
         abort(403)
     body = request.get_json(silent=True) or {}
-    mode = body.get("mode")
-    if mode not in ("mini", "full", "move"):
+    op = body.get("mode")
+    if op not in ("mini", "full", "move", "resize", "clip", "minimize", "maximize", "close"):
         abort(400)
     try:
-        if mode == "move":
-            done = window_ctl.move_by(float(body.get("dx") or 0), float(body.get("dy") or 0))
-        else:
-            done = window_ctl.set_mode(mode)
+        done = window_ctl.command(op, page_frame=body.get("frame") or {},
+                                  dx=float(body.get("dx") or 0), dy=float(body.get("dy") or 0),
+                                  edge=str(body.get("edge") or ""))
     except Exception as exc:
-        print(f"window: {mode} failed: {exc!r}", flush=True)
+        print(f"window: {op} failed: {exc!r}", flush=True)
         done = False
     return ("", 204) if done else ("", 501)
 

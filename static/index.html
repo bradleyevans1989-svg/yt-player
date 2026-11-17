@@ -238,11 +238,31 @@
     .play { width:48px; height:48px; }
     .row .acts button { opacity:1; }
   }
+  /* Frameless desktop window: our own title strip and resize edges replace the browser's. */
+  .titlebar, .rz { display:none; }
+  body.frameless .titlebar { display:flex; position:fixed; top:0; left:0; right:0; height:32px; z-index:20; align-items:center; background:var(--side); border-bottom:1px solid var(--line); cursor:default; user-select:none; touch-action:none; }
+  body.frameless .shell { height:calc(100vh - 32px); margin-top:32px; }
+  .tb-name { padding-left:14px; font-size:12px; font-weight:600; color:var(--dim); letter-spacing:.04em; }
+  .tb-btns { margin-left:auto; display:flex; height:100%; }
+  .tb-btns button { width:46px; height:100%; display:grid; place-items:center; color:var(--muted); }
+  .tb-btns button:hover { background:var(--raise); color:var(--text); }
+  .tb-btns button.close:hover { background:#e81123; color:#fff; }
+  body.frameless .rz { display:block; position:fixed; z-index:30; touch-action:none; }
+  .rz[data-edge=t] { top:0; left:8px; right:8px; height:4px; cursor:ns-resize; }
+  .rz[data-edge=b] { bottom:0; left:8px; right:8px; height:5px; cursor:ns-resize; }
+  .rz[data-edge=l] { left:0; top:8px; bottom:8px; width:5px; cursor:ew-resize; }
+  .rz[data-edge=r] { right:0; top:8px; bottom:8px; width:5px; cursor:ew-resize; }
+  .rz[data-edge=tl] { top:0; left:0; width:8px; height:8px; cursor:nwse-resize; }
+  .rz[data-edge=br] { bottom:0; right:0; width:10px; height:10px; cursor:nwse-resize; }
+  .rz[data-edge=tr] { top:0; right:0; width:8px; height:8px; cursor:nesw-resize; }
+  .rz[data-edge=bl] { bottom:0; left:0; width:10px; height:10px; cursor:nesw-resize; }
+  body.mini .titlebar, body.mini .rz { display:none !important; }
+  body.dragging, body.dragging * { user-select:none; }
   /* Mini player: the whole window becomes one small bar. */
   .minibar { display:none; }
   body.mini .shell, body.mini .toast { display:none; }
   body.mini .minibar { cursor:grab; touch-action:none; user-select:none; }
-  body.mini .minibar.dragging { cursor:grabbing; }
+  body.dragging .minibar { cursor:grabbing; }
   body.mini .minibar button, body.mini .mseek { cursor:pointer; }
   body.mini .minibar { position:fixed; inset:0; display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:12px; padding:10px 12px 14px; background:linear-gradient(110deg, #1f1d6b, #3a1a6e 60%, #6b1f78); }
   .mthumb { width:56px; height:56px; border-radius:8px; object-fit:cover; background:var(--raise); box-shadow:0 4px 16px -4px rgba(226,61,220,.6); }
@@ -260,6 +280,16 @@
 </style>
 </head>
 <body>
+<div class="titlebar" id="titlebar">
+  <span class="tb-name">Bonesy's Music Player</span>
+  <div class="tb-btns">
+    <button id="tbMin" title="Minimise" aria-label="Minimise"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M4 11h16v2H4z"/></svg></button>
+    <button id="tbMax" title="Maximise" aria-label="Maximise"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M3 3h18v18H3zm2 2v14h14V5z"/></svg></button>
+    <button id="tbClose" class="close" title="Close" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5.6 4.2 12 10.6l6.4-6.4 1.4 1.4-6.4 6.4 6.4 6.4-1.4 1.4-6.4-6.4-6.4 6.4-1.4-1.4 6.4-6.4-6.4-6.4z"/></svg></button>
+  </div>
+</div>
+<div class="rz" data-edge="t"></div><div class="rz" data-edge="b"></div><div class="rz" data-edge="l"></div><div class="rz" data-edge="r"></div>
+<div class="rz" data-edge="tl"></div><div class="rz" data-edge="tr"></div><div class="rz" data-edge="bl"></div><div class="rz" data-edge="br"></div>
 <div class="shell">
   <aside class="side">
     <a href="#" class="brand" id="home" title="Home"><img src="/static/icon-64.png" alt=""><span><b>Bonesy's</b><small>Music player</small></span></a>
@@ -922,10 +952,7 @@ async function setMini(on) {
   document.body.classList.toggle("mini", on);
   $("miniBtn").classList.toggle("on", on);
   syncMini();
-  try {
-    const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: on ? "mini" : "full" }) });
-    if (res.ok) return;
-  } catch {}
+  if (await winCmd({ mode: on ? "mini" : "full" })) return;
   try {
     if (on) { fullSize = [outerWidth, outerHeight]; resizeTo(490, 100); }
     else resizeTo(...(fullSize || [1400, 900]));
@@ -956,34 +983,62 @@ $("miniPlay").onclick = toggle;
 $("miniPrev").onclick = prev;
 $("miniNext").onclick = next;
 $("miniHeart").onclick = () => toggleFav(queue[index]);
-// Drag the mini bar to move the window (it has no title bar). Moves are sent once per frame.
-let drag = null;
-$("miniBar").addEventListener("pointerdown", (e) => {
-  if (e.button !== 0 || e.target.closest("button, .mseek")) return;
-  drag = { x: e.screenX, y: e.screenY, dx: 0, dy: 0, busy: false, moved: false };
-  $("miniBar").setPointerCapture(e.pointerId);
-});
-$("miniBar").addEventListener("pointermove", (e) => {
-  if (!drag) return;
-  drag.dx += e.screenX - drag.x; drag.dy += e.screenY - drag.y;
-  drag.x = e.screenX; drag.y = e.screenY;
-  sendMove();
-});
-const endDrag = () => { drag = null; $("miniBar").classList.remove("dragging"); };
-$("miniBar").addEventListener("pointerup", endDrag);
-$("miniBar").addEventListener("pointercancel", endDrag);
-async function sendMove() {
-  if (!drag || drag.busy || (!drag.dx && !drag.dy)) return;
-  const d = drag, dx = d.dx, dy = d.dy;
-  d.dx = d.dy = 0; d.busy = true;
-  $("miniBar").classList.add("dragging");
+// Desktop window controls. On Windows the server clips off the browser's title bar, so the page
+// supplies its own: a drag strip with minimise / maximise / close, and resize edges.
+const pageFrame = () => ({ top: outerHeight - innerHeight, side: (outerWidth - innerWidth) / 2 });
+async function winCmd(body) {
   try {
-    const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "move", dx, dy }) });
-    if (!res.ok) { try { moveBy(dx, dy); } catch {} }
-  } catch {}
-  d.busy = false;
-  if (drag === d) sendMove();
+    const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, frame: pageFrame() }) });
+    return res.ok;
+  } catch { return false; }
 }
+// Pointer drags on an element become window moves or resizes, at most one request in flight.
+function dragWindow(el, bodyFor, skip) {
+  let drag = null;
+  el.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || (skip && e.target.closest(skip))) return;
+    drag = { x: e.screenX, y: e.screenY, dx: 0, dy: 0, busy: false, body: bodyFor(e) };
+    el.setPointerCapture(e.pointerId);
+    document.body.classList.add("dragging");
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    drag.dx += e.screenX - drag.x; drag.dy += e.screenY - drag.y;
+    drag.x = e.screenX; drag.y = e.screenY;
+    send(drag);
+  });
+  const end = () => { drag = null; document.body.classList.remove("dragging"); };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  async function send(d) {
+    if (d.busy || (!d.dx && !d.dy)) return;
+    const dx = d.dx, dy = d.dy;
+    d.dx = d.dy = 0; d.busy = true;
+    const ok = await winCmd({ ...d.body, dx, dy });
+    if (!ok && d.body.mode === "move") { try { moveBy(dx, dy); } catch {} }
+    d.busy = false;
+    if (drag === d) send(d);
+  }
+}
+dragWindow($("miniBar"), () => ({ mode: "move" }), "button, .mseek");
+dragWindow($("titlebar"), () => ({ mode: "move" }), "button");
+document.querySelectorAll(".rz").forEach((el) => dragWindow(el, () => ({ mode: "resize", edge: el.dataset.edge })));
+$("titlebar").addEventListener("dblclick", (e) => { if (!e.target.closest("button")) winCmd({ mode: "maximize" }); });
+$("tbMin").onclick = () => winCmd({ mode: "minimize" });
+$("tbMax").onclick = () => winCmd({ mode: "maximize" });
+$("tbClose").onclick = async () => { if (!(await winCmd({ mode: "close" }))) window.close(); };
+// Keep the clip in step with the window (snapping, Win+arrows, maximise).
+let clipTimer;
+addEventListener("resize", () => {
+  if (!document.body.classList.contains("frameless")) return;
+  clearTimeout(clipTimer);
+  clipTimer = setTimeout(() => winCmd({ mode: "clip" }), 120);
+});
+fetch("/api/window").then((r) => r.json()).then((info) => {
+  if (!info.frameless) return;
+  document.body.classList.add("frameless");
+  winCmd({ mode: "clip" });
+}).catch(() => {});
 $("miniSeek").onclick = (e) => {
   const r = e.currentTarget.getBoundingClientRect();
   if (audio.duration) audio.currentTime = audio.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
