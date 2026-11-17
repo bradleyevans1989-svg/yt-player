@@ -698,12 +698,22 @@ async function playChartSong(song, playNow) {
   } catch { status(`Couldn't find “${song.title}” on YouTube.`); }
 }
 
-function circle(name, img) {
+// Artist photo from the server (looked up on Deezer), falling back to a song cover, then the initial.
+function artistImg(img, name, fallback, onFail) {
+  img.alt = ""; img.loading = "lazy";
+  img.onerror = () => {
+    if (fallback && img.dataset.step !== "cover") { img.dataset.step = "cover"; img.src = fallback; }
+    else onFail();
+  };
+  img.src = `/api/artist-image?name=${encodeURIComponent(name)}`;
+}
+function circle(name, fallback) {
   const b = document.createElement("button");
   b.className = "circle"; b.title = `Search for ${name}`;
   b.innerHTML = `<div class="ph"></div><span class="ellipsis"></span>`;
-  if (img) { const i = new Image(); i.loading = "lazy"; i.alt = ""; i.src = img; i.onerror = () => { i.remove(); b.querySelector(".ph").textContent = name[0]; }; b.querySelector(".ph").append(i); }
-  else b.querySelector(".ph").textContent = name.trim()[0]?.toUpperCase() || "?";
+  const ph = b.querySelector(".ph"), i = new Image();
+  artistImg(i, name, fallback, () => { i.remove(); ph.textContent = name.trim()[0]?.toUpperCase() || "?"; });
+  ph.append(i);
   b.querySelector("span").textContent = name;
   b.onclick = () => search(name);
   return b;
@@ -736,8 +746,8 @@ function renderMine() {
     const b = document.createElement("button");
     b.title = `Search for ${n}`;
     b.innerHTML = `<img alt=""><span class="ellipsis"></span>`;
-    const pic = artistPic(n);
-    if (pic) b.querySelector("img").src = pic; else b.querySelector("img").style.visibility = "hidden";
+    const img = b.querySelector("img");
+    artistImg(img, n, artistPic(n), () => { img.removeAttribute("src"); img.style.visibility = "hidden"; });
     b.querySelector("span").textContent = n;
     b.onclick = () => search(n);
     return b;

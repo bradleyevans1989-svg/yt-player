@@ -3,3 +3,4 @@ __pycache__/
 .venv/
 .state.json
 tunes.log
+.artist_images.json
