@@ -87,7 +87,7 @@ def open_window():
     ]
     for exe in candidates:
         if os.path.exists(exe):
-            subprocess.Popen([exe, f"--app={URL}", "--window-size=1000,800"])
+            subprocess.Popen([exe, f"--app={URL}", "--window-size=1400,900"])
             return
     import webbrowser
     webbrowser.open(URL)
