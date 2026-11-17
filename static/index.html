@@ -241,6 +241,9 @@
   /* Mini player: the whole window becomes one small bar. */
   .minibar { display:none; }
   body.mini .shell, body.mini .toast { display:none; }
+  body.mini .minibar { cursor:grab; touch-action:none; user-select:none; }
+  body.mini .minibar.dragging { cursor:grabbing; }
+  body.mini .minibar button, body.mini .mseek { cursor:pointer; }
   body.mini .minibar { position:fixed; inset:0; display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:12px; padding:10px 12px 14px; background:linear-gradient(110deg, #1f1d6b, #3a1a6e 60%, #6b1f78); }
   .mthumb { width:56px; height:56px; border-radius:8px; object-fit:cover; background:var(--raise); box-shadow:0 4px 16px -4px rgba(226,61,220,.6); }
   .mtext { min-width:0; }
@@ -924,7 +927,7 @@ async function setMini(on) {
     if (res.ok) return;
   } catch {}
   try {
-    if (on) { fullSize = [outerWidth, outerHeight]; resizeTo(400, 150); }
+    if (on) { fullSize = [outerWidth, outerHeight]; resizeTo(490, 100); }
     else resizeTo(...(fullSize || [1400, 900]));
   } catch {}
 }
@@ -953,6 +956,34 @@ $("miniPlay").onclick = toggle;
 $("miniPrev").onclick = prev;
 $("miniNext").onclick = next;
 $("miniHeart").onclick = () => toggleFav(queue[index]);
+// Drag the mini bar to move the window (it has no title bar). Moves are sent once per frame.
+let drag = null;
+$("miniBar").addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest("button, .mseek")) return;
+  drag = { x: e.screenX, y: e.screenY, dx: 0, dy: 0, busy: false, moved: false };
+  $("miniBar").setPointerCapture(e.pointerId);
+});
+$("miniBar").addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  drag.dx += e.screenX - drag.x; drag.dy += e.screenY - drag.y;
+  drag.x = e.screenX; drag.y = e.screenY;
+  sendMove();
+});
+const endDrag = () => { drag = null; $("miniBar").classList.remove("dragging"); };
+$("miniBar").addEventListener("pointerup", endDrag);
+$("miniBar").addEventListener("pointercancel", endDrag);
+async function sendMove() {
+  if (!drag || drag.busy || (!drag.dx && !drag.dy)) return;
+  const d = drag, dx = d.dx, dy = d.dy;
+  d.dx = d.dy = 0; d.busy = true;
+  $("miniBar").classList.add("dragging");
+  try {
+    const res = await fetch("/api/window", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "move", dx, dy }) });
+    if (!res.ok) { try { moveBy(dx, dy); } catch {} }
+  } catch {}
+  d.busy = false;
+  if (drag === d) sendMove();
+}
 $("miniSeek").onclick = (e) => {
   const r = e.currentTarget.getBoundingClientRect();
   if (audio.duration) audio.currentTime = audio.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));

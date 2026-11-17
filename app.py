@@ -123,11 +123,15 @@ def api_window():
     """Switch the desktop window between the full player and the mini player."""
     if request.remote_addr not in ("127.0.0.1", "::1"):
         abort(403)
-    mode = (request.get_json(silent=True) or {}).get("mode")
-    if mode not in ("mini", "full"):
+    body = request.get_json(silent=True) or {}
+    mode = body.get("mode")
+    if mode not in ("mini", "full", "move"):
         abort(400)
     try:
-        done = window_ctl.set_mode(mode)
+        if mode == "move":
+            done = window_ctl.move_by(float(body.get("dx") or 0), float(body.get("dy") or 0))
+        else:
+            done = window_ctl.set_mode(mode)
     except Exception as exc:
         print(f"window: {mode} failed: {exc!r}", flush=True)
         done = False
