@@ -21,6 +21,7 @@ MARGIN = 16
 
 _saved = {}      # hwnd -> (rect, was_maximized) before the mini player
 _maximized = {}  # hwnd -> rect before our own maximise (borderless window)
+_drag = {}       # the drag in progress: hwnd, op, edge, cursor and window rect when it started
 borderless = False  # set by the launcher when it hosts the player in its own borderless window
 fixed_hwnd = None   # that window's handle, once it has been shown
 
@@ -50,6 +51,7 @@ if sys.platform == "win32":
         "PostMessageW": [H, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM],
         "IsWindow": [H], "SetForegroundWindow": [H],
         "GetWindowRect": [H, ctypes.POINTER(wintypes.RECT)],
+        "GetCursorPos": [ctypes.POINTER(wintypes.POINT)],
         "MonitorFromWindow": [H, wintypes.DWORD],
         "SetWindowPos": [H, H, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT],
         "EnumChildWindows": [H, WNDENUMPROC, wintypes.LPARAM],
@@ -193,12 +195,57 @@ def _frame_offsets(hwnd, scale, page_frame):
     return 0, 0, 0, 0
 
 
-def command(op, page_frame=None, dx=0.0, dy=0.0, edge=""):
+def _cursor():
+    pt = wintypes.POINT()
+    user32.GetCursorPos(ctypes.byref(pt))
+    return pt.x, pt.y
+
+
+def drag(op, edge="", start=False):
+    """Move or resize the window to follow the mouse, measured from where the drag started.
+
+    Uses the real cursor position in screen pixels rather than the page's mouse deltas, which
+    are in CSS pixels whose size changes when the window crosses onto a screen with a
+    different scale, and which go wrong while the page itself is being moved under the mouse.
+    """
+    global _drag
+    hwnd, scale = _window_and_scale()
+    if not hwnd:
+        return False
+    if start or _drag.get("hwnd") != hwnd or _drag.get("op") != op or _drag.get("edge") != edge:
+        r = _rect(hwnd)
+        _drag = {"hwnd": hwnd, "op": op, "edge": edge, "cursor": _cursor(),
+                 "rect": (r.left, r.top, r.right, r.bottom)}
+        return True
+    (cx, cy), (left, top, right, bottom) = _cursor(), _drag["rect"]
+    ddx, ddy = cx - _drag["cursor"][0], cy - _drag["cursor"][1]
+    if op == "move":
+        user32.SetWindowPos(hwnd, None, left + ddx, top + ddy, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)
+        return True
+    if user32.IsZoomed(hwnd):
+        return True
+    min_w, min_h = round(MIN_SIZE[0] * scale), round(MIN_SIZE[1] * scale)
+    if "l" in edge:
+        left = min(left + ddx, right - min_w)
+    if "r" in edge:
+        right = max(right + ddx, left + min_w)
+    if "t" in edge:
+        top = min(top + ddy, bottom - min_h)
+    if "b" in edge:
+        bottom = max(bottom + ddy, top + min_h)
+    user32.SetWindowPos(hwnd, None, left, top, right - left, bottom - top, SWP_NOZORDER | SWP_NOACTIVATE)
+    _maximized.pop(hwnd, None)
+    return True
+
+
+def command(op, page_frame=None, dx=0.0, dy=0.0, edge="", start=None):
     """Window commands from the page: move, resize, minimize, maximize, close, focus, mini, full."""
     if not supported():
         return False
     if op in ("mini", "full"):
         return set_mode(op, page_frame)
+    if op in ("move", "resize") and start is not None:
+        return drag(op, edge, bool(start))
     if op == "move":
         return move_by(dx, dy)
     hwnd, scale = _window_and_scale()
