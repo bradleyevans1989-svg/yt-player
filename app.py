@@ -137,7 +137,8 @@ def api_window():
     try:
         done = window_ctl.command(op, page_frame=body.get("frame") or {},
                                   dx=float(body.get("dx") or 0), dy=float(body.get("dy") or 0),
-                                  edge=str(body.get("edge") or ""))
+                                  edge=str(body.get("edge") or ""),
+                                  start=bool(body["start"]) if "start" in body else None)
     except Exception as exc:
         print(f"window: {op} failed: {exc!r}", flush=True)
         done = False

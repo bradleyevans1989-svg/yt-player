@@ -1030,7 +1030,7 @@ function dragWindow(el, bodyFor, skip) {
   let drag = null;
   el.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || (skip && e.target.closest(skip))) return;
-    drag = { x: e.screenX, y: e.screenY, dx: 0, dy: 0, busy: false, body: bodyFor(e) };
+    drag = { x: e.screenX, y: e.screenY, dx: 0, dy: 0, busy: false, started: false, body: bodyFor(e) };
     el.setPointerCapture(e.pointerId);
     document.body.classList.add("dragging");
   });
@@ -1043,11 +1043,13 @@ function dragWindow(el, bodyFor, skip) {
   const end = () => { drag = null; document.body.classList.remove("dragging"); };
   el.addEventListener("pointerup", end);
   el.addEventListener("pointercancel", end);
+  // The server follows the real mouse position from where the drag started (start: true),
+  // which stays right across screens with different scaling; dx/dy are for the browser fallback.
   async function send(d) {
     if (d.busy || (!d.dx && !d.dy)) return;
-    const dx = d.dx, dy = d.dy;
-    d.dx = d.dy = 0; d.busy = true;
-    const ok = await winCmd({ ...d.body, dx, dy });
+    const dx = d.dx, dy = d.dy, start = !d.started;
+    d.dx = d.dy = 0; d.busy = true; d.started = true;
+    const ok = await winCmd({ ...d.body, dx, dy, start });
     if (!ok && d.body.mode === "move") { try { moveBy(dx, dy); } catch {} }
     d.busy = false;
     if (drag === d) send(d);
